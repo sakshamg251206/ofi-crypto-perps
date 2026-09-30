@@ -1,0 +1,18 @@
+[project]
+name = "ofi"
+version = "0.1.0"
+description = "Cont–Kukanov–Stoikov order-flow imbalance replication on Binance USDT-M perps"
+requires-python = ">=3.14"
+dependencies = [
+    "numpy==2.5.3",
+    "pandas==3.0.6",
+    "pyarrow==25.0.1",
+    "statsmodels==0.15.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

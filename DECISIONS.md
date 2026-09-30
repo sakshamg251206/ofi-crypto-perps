@@ -42,3 +42,12 @@ Measured on BTCUSDT 2026-09-01 (both files are free on the 1st of the month):
 ## 2026-09-30 — Main dataset: `book_ticker`; `quotes` as robustness
 
 Resolves the open item above. CKS define e_n per top-of-book event. `book_ticker` (native Binance bookTicker) records each change, while `quotes` batches ~19 events per row. The choice was made on fidelity to the method, before any OFI or regression was computed. Cost: up to ~250 MB / 37M rows per day. Handled by processing one day at a time and keeping only the bucketed output.
+
+## 2026-09-30 — Phase 1 implementation choices
+
+- **Depth D_w is sampled on the bucket grid.** HYPOTHESES.md says "mean over window". Implemented as the book state at the end of each 10 s bucket, averaged over the window's buckets. Averaging over events instead would weight busy moments, and events cluster when depth is thin, so it would understate typical depth. This is an interpretation, not a change.
+- **Bucket conventions.** Buckets are left-closed [t, t+Δ). ΔMid_k = mid at end of bucket k minus mid at end of bucket k−1. Empty buckets are kept with OFI = 0 and ΔMid = 0 (no information arrived; dropping them would select on activity). The file's pre-midnight row seeds the initial state but its e_n is not counted.
+- **Funding exclusion drops whole buckets** that overlap [F−2 min, F+2 min), including the 23:58–24:00 buckets before the next day's 00:00 funding.
+- **Newey–West lags** use the plug-in rule floor(4(n/100)^(2/9)), which gives 4 for n ≈ 170. Fixed in advance, not tuned.
+- **Placebo shift is matched by time** (t − 5Δ), not by row position, so the funding gaps don't misalign buckets.
+- **Windows with < 30 usable buckets are skipped.**
