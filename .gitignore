@@ -1,0 +1,7 @@
+data/
+*.csv.gz
+*.parquet
+.venv/
+__pycache__/
+.remember/
+.DS_Store
