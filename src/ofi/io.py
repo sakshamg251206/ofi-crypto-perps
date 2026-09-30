@@ -10,6 +10,7 @@ TARDIS_URL = "https://datasets.tardis.dev/v1/binance-futures/{dataset}/{y}/{m}/{
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 # HYPOTHESES.md: test split 2026-04 .. 2026-09, untouched until Phase 4's final run.
 TEST_START, TEST_END = dt.date(2026, 4, 1), dt.date(2026, 9, 30)
+MAX_ATTEMPTS = 3
 
 TOB_DTYPES = {"timestamp": "int64", "local_timestamp": "int64", "bid_price": "float64",
               "bid_amount": "float64", "ask_price": "float64", "ask_amount": "float64"}
@@ -38,14 +39,30 @@ def download_day(dataset: str, symbol: str, date: str, data_dir: Path = DATA_DIR
     url = TARDIS_URL.format(dataset=dataset, y=y, m=m, d=d, symbol=symbol)
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(".part")
-    with urllib.request.urlopen(url) as r, open(tmp, "wb") as out:
-        shutil.copyfileobj(r, out)
-    tmp.rename(dest)  # atomic: a crash never leaves a truncated file under the real name
-    return dest
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        with urllib.request.urlopen(url) as r, open(tmp, "wb") as out:
+            declared = int(r.headers.get("Content-Length", -1))
+            shutil.copyfileobj(r, out)
+        got = tmp.stat().st_size
+        if declared < 0 or got == declared:  # the server can close early without an error
+            tmp.rename(dest)  # atomic: never a truncated file under the real name
+            return dest
+        tmp.unlink()
+    raise IOError(f"{url}: truncated after {MAX_ATTEMPTS} attempts ({got} of {declared} bytes)")
 
 
-def load_top_of_book(dataset: str, symbol: str, date: str, data_dir: Path = DATA_DIR) -> pd.DataFrame:
-    """Load a quotes/book_ticker file in original row order (sequence within a ms is preserved)."""
+def load_top_of_book(dataset: str, symbol: str, date: str, data_dir: Path = DATA_DIR,
+                     chunksize: int | None = None):
+    """Load a quotes/book_ticker file in original row order (sequence within a ms is preserved).
+
+    With `chunksize`, returns an iterator of DataFrames instead (bounded memory).
+    """
     assert_not_test_date(date)
     return pd.read_csv(raw_path(dataset, symbol, date, data_dir),
-                       usecols=list(TOB_DTYPES), dtype=TOB_DTYPES)
+                       usecols=list(TOB_DTYPES), dtype=TOB_DTYPES, chunksize=chunksize)
+
+
+def load_trades(symbol: str, date: str, data_dir: Path = DATA_DIR) -> pd.DataFrame:
+    assert_not_test_date(date)
+    return pd.read_csv(raw_path("trades", symbol, date, data_dir), usecols=["timestamp", "side", "amount"],
+                       dtype={"timestamp": "int64", "side": "category", "amount": "float64"})

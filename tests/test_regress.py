@@ -45,3 +45,31 @@ def test_newey_west_lag_rule():
     assert nw_lags(180) == 4
     assert nw_lags(100) == 4
     assert nw_lags(1000) == 6
+
+
+def test_xcols_selects_regressor():
+    b = synthetic()
+    b["ti"] = np.random.default_rng(9).standard_normal(len(b))  # unrelated to dmid
+    res = window_regressions(b, freq_s=10, xcols=("ti",))
+    assert res["r2"].median() < 0.03
+
+
+def test_extra_nonlinear_term_raises_r2_when_relation_is_nonlinear():
+    # For Gaussian OFI, corr(OFI, OFI|OFI|) ~ 0.92, so curvature must be strong to show up;
+    # this checks a clear nonlinearity clears the H2 threshold of 0.02.
+    b = synthetic()
+    b["dmid_ticks"] = 0.5 * b["ofi"] + 1.0 * b["ofi"] * b["ofi"].abs() + np.random.default_rng(3).standard_normal(len(b))
+    b["ofi_abs"] = b["ofi"] * b["ofi"].abs()
+    lin = window_regressions(b, freq_s=10)["r2"].median()
+    quad = window_regressions(b, freq_s=10, xcols=("ofi", "ofi_abs"))["r2"].median()
+    assert quad - lin > 0.02
+
+
+def test_window_features_depth_mean_and_wide_spread_share():
+    from ofi.regress import window_features
+    idx = pd.Index(DAY0 + np.arange(360) * 10 * S, name="t")  # two 30-min windows
+    b = pd.DataFrame({"depth": np.r_[np.full(180, 2.0), np.full(180, 6.0)],
+                      "spread_ticks": np.r_[np.ones(90), np.full(90, 2.0), np.ones(180)]}, index=idx)
+    f = window_features(b, window_s=1800)
+    assert f["depth_mean"].tolist() == [2.0, 6.0]
+    assert f["frac_spread_gt1"].tolist() == [0.5, 0.0]

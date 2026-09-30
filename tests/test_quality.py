@@ -47,3 +47,29 @@ def test_max_gap_and_rows_per_hour():
     r = quality_report(toy(), tick=0.1)
     assert r["max_gap_s"] == pytest.approx(7200 - 3.0)
     assert r["rows_per_hour"][0] == 5 and r["rows_per_hour"][2] == 1
+
+
+from ofi.quality import QualityAccumulator
+
+
+def test_consecutive_duplicates_counted():
+    df = toy()
+    df = pd.concat([df.iloc[:2], df.iloc[[1]], df.iloc[2:]], ignore_index=True)  # repeat row 1
+    assert quality_report(df, tick=0.1)["duplicate_rows"] == 1
+
+
+@pytest.mark.parametrize("cut", [1, 3, 4, 5])
+def test_chunked_report_equals_whole(cut):
+    df = toy()
+    df = pd.concat([df.iloc[:2], df.iloc[[1]], df.iloc[2:]], ignore_index=True)
+    acc = QualityAccumulator(tick=0.1)
+    acc.update(df.iloc[:cut])
+    acc.update(df.iloc[cut:])
+    assert acc.report() == quality_report(df, tick=0.1)
+
+
+def test_off_grid_rows_counted():
+    df = toy()
+    df.loc[2, "ask_price"] = 100.33  # not a multiple of the 0.1 tick
+    assert quality_report(df, tick=0.1)["off_grid_rows"] == 1
+    assert quality_report(toy(), tick=0.1)["off_grid_rows"] == 0

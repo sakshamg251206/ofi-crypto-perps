@@ -16,3 +16,21 @@ run_utc,git_sha,phase,symbol,dates,dataset,bucket,window,variant,metric,value,no
 2026-09-30T15:10:29+00:00,76ca169,1,BTCUSDT,2025-09-01,quotes,10s,30min,H1 contemporaneous,placebo+5_r2_median,0.001671,
 2026-09-30T15:10:29+00:00,76ca169,1,BTCUSDT,2025-09-01,quotes,10s,30min,H1 contemporaneous,placebo-5_r2_median,0.002782,
 2026-09-30T15:10:29+00:00,76ca169,1,BTCUSDT,2023-09-01;2024-09-01;2025-09-01,book_ticker,10s,30min,H1 contemporaneous pooled,frac_beta_pos,1.0,
+2026-09-30T16:30:58+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,H1-H4 main 10s/30min,frac_beta_pos,1.0,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:30:58+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,H1-H4 main 10s/30min,r2_ofi_median,0.710232,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:30:58+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,H1-H4 main 10s/30min,h2_diff,0.012323,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:30:58+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,H1-H4 main 10s/30min,lam,0.74381,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:30:58+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,H1-H4 main 10s/30min,h4_diff,0.317167,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:30:58+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,exploratory spread>1 main 10s/30min,spearman_r2_vs_spread_gt1,-0.160883,"exploratory, not pre-registered"
+2026-09-30T16:31:45+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,1s,30min,H1-H4 robust 1s/30min,frac_beta_pos,1.0,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:31:45+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,1s,30min,H1-H4 robust 1s/30min,r2_ofi_median,0.616677,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:31:45+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,1s,30min,H1-H4 robust 1s/30min,h2_diff,0.01629,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:31:45+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,1s,30min,H1-H4 robust 1s/30min,lam,0.81673,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:31:45+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,1s,30min,H1-H4 robust 1s/30min,h4_diff,0.269566,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:31:45+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,1s,30min,exploratory spread>1 robust 1s/30min,spearman_r2_vs_spread_gt1,0.011861,"exploratory, not pre-registered"
+2026-09-30T16:32:05+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,60s,120min,H1-H4 robust 60s/2h,frac_beta_pos,1.0,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:32:05+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,60s,120min,H1-H4 robust 60s/2h,r2_ofi_median,0.642616,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:32:05+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,60s,120min,H1-H4 robust 60s/2h,h2_diff,0.010508,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:32:05+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,60s,120min,H1-H4 robust 60s/2h,lam,0.604055,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:32:05+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,60s,120min,H1-H4 robust 60s/2h,h4_diff,0.179614,H1=PASS H2=PASS H3=FAIL H4=PASS
+2026-09-30T16:32:05+00:00,6a0ab09,2,BTCUSDT,2023-09-01..2026-03-01 (31d),book_ticker,60s,120min,exploratory spread>1 robust 60s/2h,spearman_r2_vs_spread_gt1,-0.215461,"exploratory, not pre-registered"

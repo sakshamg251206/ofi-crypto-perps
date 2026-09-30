@@ -70,3 +70,63 @@ def test_drop_funding_removes_buckets_overlapping_two_minutes_around_funding():
     kept = drop_funding(g, freq_s=10)
     kept_sec = sorted(((kept.index - DAY0) // S).tolist())
     assert kept_sec == sorted([7 * 3600 + 57 * 60 + 50, 8 * 3600 + 2 * 60, 12 * 3600])
+
+
+# ---- Phase 2: chunked processing, resampling, spread, trade imbalance ----
+from ofi.ofi import bucketize_chunks, resample_buckets, trade_imbalance
+
+
+def random_book(n=5000, seed=1):
+    """Random-walk top of book over the first ~2 hours of DAY0, starting 1 ms before midnight."""
+    rng = np.random.default_rng(seed)
+    sec = np.concatenate([[-0.001], np.sort(rng.uniform(0, 7200, n - 1))])
+    bid = 100.0 + 0.1 * np.cumsum(rng.choice([-1, 0, 0, 0, 1], n))
+    spread = 0.1 * rng.choice([1, 1, 1, 2, 3], n)
+    rows = list(zip(sec, bid, rng.uniform(0.1, 9, n), bid + spread, rng.uniform(0.1, 9, n)))
+    return book(rows)
+
+
+@pytest.mark.parametrize("cuts", [[1], [2500], [1, 2, 3, 4000], [4999]])
+def test_chunked_equals_single_pass(cuts):
+    b = random_book()
+    edges = [0, *cuts, len(b)]
+    chunks = [b.iloc[i:j] for i, j in zip(edges, edges[1:])]
+    got = bucketize_chunks(iter(chunks), freq_s=10, tick=TICK, day0=DAY0)
+    pd.testing.assert_frame_equal(got, bucketize(b, freq_s=10, tick=TICK))
+
+
+def test_resample_1s_to_10s_equals_direct_10s():
+    b = random_book()
+    got = resample_buckets(bucketize(b, freq_s=1, tick=TICK), freq_s=10)
+    pd.testing.assert_frame_equal(got, bucketize(b, freq_s=10, tick=TICK), check_exact=False, atol=1e-9)
+
+
+def test_spread_ticks_is_state_at_bucket_end():
+    rows = [(0.0, 100.0, 1, 100.1, 1), (4.0, 100.0, 1, 100.3, 1)]
+    b = bucketize(book(rows), freq_s=10, tick=TICK)
+    assert b.loc[DAY0, "spread_ticks"] == pytest.approx(3.0)
+    assert b.loc[DAY0 + 50 * S, "spread_ticks"] == pytest.approx(3.0)
+
+
+def test_trade_imbalance_signs_and_buckets():
+    trades = pd.DataFrame({
+        "timestamp": [DAY0 - 1000, DAY0 + 1 * S, DAY0 + 2 * S, DAY0 + 10 * S],
+        "side": ["buy", "buy", "sell", "sell"],
+        "amount": [9.0, 2.0, 0.5, 1.0],
+    })
+    ti = trade_imbalance(trades, day0=DAY0, freq_s=10)
+    assert len(ti) == 8640
+    assert ti.loc[DAY0] == pytest.approx(1.5)        # pre-midnight trade ignored
+    assert ti.loc[DAY0 + 10 * S] == pytest.approx(-1.0)
+    assert ti.loc[DAY0 + 20 * S] == 0
+
+
+def test_trade_imbalance_ignores_unknown_side():
+    trades = pd.DataFrame({"timestamp": [DAY0 + S, DAY0 + 2 * S], "side": ["buy", "unknown"], "amount": [2.0, 5.0]})
+    assert trade_imbalance(trades, day0=DAY0, freq_s=10).loc[DAY0] == pytest.approx(2.0)
+
+
+def test_resample_sums_trade_imbalance_when_present():
+    b = bucketize(random_book(), freq_s=1, tick=TICK)
+    b["ti"] = 1.0
+    assert (resample_buckets(b, freq_s=10)["ti"] == 10.0).all()

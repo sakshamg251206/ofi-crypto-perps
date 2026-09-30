@@ -66,3 +66,9 @@ These fill in details HYPOTHESES.md leaves open. Fixed before running Phase 2.
 - **Main specification** is 10 s / 30 min. H1–H4 are also reported at 1 s / 30 min and 60 s / 2 h as robustness. The pass/fail verdicts use the main specification only.
 - **Exploratory, not pre-registered:** does R² depend on how often the spread is > 1 tick (window share of bucket-end spreads > 1 tick)? Reported with Spearman ρ and a quintile split, and labelled exploratory in the memo and the ledger.
 - **Not repeated:** the `quotes` robustness check (done on 2025-09-01 in Phase 1).
+
+## 2026-09-30 — Off-tick-grid prices are kept
+
+On 2023-11-01, 234 `book_ticker` rows had ask prices off the 0.1 grid (e.g. 34417.43), all with tiny sizes (0.001–0.002 BTC), in five clusters between 16:20 and 21:00 UTC. 158 trades executed at off-grid prices the same day (median 0.001 BTC). So these are real book states, not feed errors, and they are kept. The strict "inferred tick == 0.1" check is replaced by a count of off-grid rows, and the build fails only if they exceed 0.01% of a day. ΔMid in ticks can be fractional at those moments, which is harmless for the regressions.
+
+Also corrected: Phase 1's "duplicate rows" (up to 13k/day) were non-adjacent identical rows, i.e. states recurring within the same millisecond (A→B→A), which contribute real e_n. The quality report now counts only rows identical to the previous row. There are 0 of those on the days checked.

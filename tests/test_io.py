@@ -43,3 +43,40 @@ def test_ledger_rejects_unknown_field(tmp_path):
     p.write_text("run_utc,git_sha,metric\n")
     with pytest.raises(KeyError):
         log_run(p, nonsense=1)
+
+
+def test_load_trades_refuses_test_date(tmp_path):
+    from ofi.io import load_trades
+    with pytest.raises(HeldOutDateError):
+        load_trades("BTCUSDT", "2026-05-01", data_dir=tmp_path)
+
+
+import io as _io
+
+
+class FakeResponse(_io.BytesIO):
+    def __init__(self, body: bytes, declared: int):
+        super().__init__(body)
+        self.headers = {"Content-Length": str(declared)}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_download_rejects_truncated_body(tmp_path, monkeypatch):
+    import ofi.io as oio
+    monkeypatch.setattr(oio.urllib.request, "urlopen", lambda url: FakeResponse(b"abc", declared=10))
+    with pytest.raises(IOError):
+        download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path)
+    assert not [p for p in tmp_path.rglob("*") if p.is_file()]
+
+
+def test_download_retries_then_succeeds(tmp_path, monkeypatch):
+    import ofi.io as oio
+    calls = iter([FakeResponse(b"abc", 10), FakeResponse(b"0123456789", 10)])
+    monkeypatch.setattr(oio.urllib.request, "urlopen", lambda url: next(calls))
+    p = download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path)
+    assert p.read_bytes() == b"0123456789"

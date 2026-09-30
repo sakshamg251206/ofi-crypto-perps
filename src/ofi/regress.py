@@ -14,28 +14,41 @@ def nw_lags(n: int) -> int:
 
 
 def window_regressions(
-    buckets: pd.DataFrame, freq_s: int, window_s: int = 1800, shift: int = 0
+    buckets: pd.DataFrame, freq_s: int, window_s: int = 1800, shift: int = 0,
+    xcols: tuple[str, ...] = ("ofi",), y: str = "dmid_ticks",
 ) -> pd.DataFrame:
-    """OLS of dmid_ticks on ofi within each window, with Newey–West t-stats.
+    """OLS of `y` on `xcols` (+ constant) within each window, with Newey–West t-stats.
 
-    `shift` is the placebo: regress dmid at t on OFI from t - shift*freq
-    (matched by time, so funding gaps don't misalign buckets). Windows with
-    fewer than MIN_OBS usable buckets or constant OFI are skipped.
+    `beta`/`t_nw` refer to the first regressor. `shift` is the placebo: regress
+    y at t on regressors from t - shift*freq (matched by time, so funding gaps
+    don't misalign buckets). Windows with fewer than MIN_OBS usable buckets or a
+    constant first regressor are skipped.
     """
     f = freq_s * US
     t = buckets.index.to_numpy()
-    x = buckets["ofi"].reindex(t - shift * f).to_numpy() if shift else buckets["ofi"].to_numpy()
-    df = pd.DataFrame({"y": buckets["dmid_ticks"].to_numpy(), "x": x, "w": t // (window_s * US) * (window_s * US)})
+    X = buckets[list(xcols)].reindex(t - shift * f) if shift else buckets[list(xcols)]
+    df = pd.DataFrame(X.to_numpy(), columns=list(xcols))
+    df["y"] = buckets[y].to_numpy()
+    df["w"] = t // (window_s * US) * (window_s * US)
     df = df.dropna()
 
     rows = []
     for w, g in df.groupby("w"):
-        if len(g) < MIN_OBS or g["x"].std() == 0:
+        if len(g) < MIN_OBS or g[xcols[0]].std() == 0:
             continue
-        fit = sm.OLS(g["y"].to_numpy(), sm.add_constant(g["x"].to_numpy())).fit(
+        fit = sm.OLS(g["y"].to_numpy(), sm.add_constant(g[list(xcols)].to_numpy(), has_constant="add")).fit(
             cov_type="HAC", cov_kwds={"maxlags": nw_lags(len(g))}
         )
         rows.append({"window": w, "alpha": fit.params[0], "beta": fit.params[1],
                      "t_nw": fit.tvalues[1], "r2": fit.rsquared, "n": len(g)})
     return pd.DataFrame(rows).set_index("window") if rows else pd.DataFrame(
         columns=["alpha", "beta", "t_nw", "r2", "n"])
+
+
+def window_features(buckets: pd.DataFrame, window_s: int = 1800) -> pd.DataFrame:
+    """Per-window book state: D_w = mean bucket-end depth; share of bucket-end spreads > 1 tick."""
+    w = buckets.index.to_numpy() // (window_s * US) * (window_s * US)
+    g = buckets.assign(gt1=buckets["spread_ticks"] > 1).groupby(w)
+    out = pd.DataFrame({"depth_mean": g["depth"].mean(), "frac_spread_gt1": g["gt1"].mean()})
+    out.index.name = "window"
+    return out
