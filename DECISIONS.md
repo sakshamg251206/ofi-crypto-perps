@@ -72,3 +72,16 @@ These fill in details HYPOTHESES.md leaves open. Fixed before running Phase 2.
 On 2023-11-01, 234 `book_ticker` rows had ask prices off the 0.1 grid (e.g. 34417.43), all with tiny sizes (0.001–0.002 BTC), in five clusters between 16:20 and 21:00 UTC. 158 trades executed at off-grid prices the same day (median 0.001 BTC). So these are real book states, not feed errors, and they are kept. The strict "inferred tick == 0.1" check is replaced by a count of off-grid rows, and the build fails only if they exceed 0.01% of a day. ΔMid in ticks can be fractional at those moments, which is harmless for the regressions.
 
 Also corrected: Phase 1's "duplicate rows" (up to 13k/day) were non-adjacent identical rows, i.e. states recurring within the same millisecond (A→B→A), which contribute real e_n. The quality report now counts only rows identical to the previous row. There are 0 of those on the days checked.
+
+## 2026-10-01 — Phase 3: how the third-symbol rule is applied (written before selection)
+
+Operational details of the HYPOTHESES.md rule, fixed before any 2023-08-01 data is looked at:
+
+- **Universe:** Binance USDⓈ-M perpetuals whose symbol ends in `USDT` (no delivery-date suffix) and that have a daily kline for 2023-08-01 on data.binance.vision (`data/futures/um/daily/klines/<SYM>/1d/`). BTCUSDT and ETHUSDT are excluded because they are already in the sample.
+- **Volume ranking:** quote-asset volume (USDT) of that 2023-08-01 daily kline. Quote volume is comparable across coins; base volume is not. Top 20 are kept.
+- **Spread measure:** Tardis `book_ticker` for 2023-08-01. Share of 1-second grid points (book state at each 1 s bucket end, same convention as the main pipeline) with spread > 1 tick. No funding exclusion for the selection.
+- **Activity filter:** median over 1 s buckets of top-of-book updates ≥ 1.
+- **Tick size:** inferred per symbol per day as the largest t in {1, 2, 5} × 10^k such that ≥ 99.99% of rows have bid and ask on the t grid. Exchange tick sizes change over time, so tick is inferred per day rather than taken from today's exchangeInfo. ΔMid and spread are then measured in that day's ticks. Any tick change inside the sample gets logged.
+- **Pick:** highest spread > 1 tick share among those passing the activity filter; ties go to higher volume.
+- 2023-08-01 is outside the sample and outside the test split, so choosing on it involves no peeking.
+- If the chosen symbol is missing on any sample day (e.g. delisted), those days are reported as missing and not replaced. The choice is fixed ex ante, which avoids survivorship bias.
