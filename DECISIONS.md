@@ -51,3 +51,18 @@ Resolves the open item above. CKS define e_n per top-of-book event. `book_ticker
 - **Newey–West lags** use the plug-in rule floor(4(n/100)^(2/9)), which gives 4 for n ≈ 170. Fixed in advance, not tuned.
 - **Placebo shift is matched by time** (t − 5Δ), not by row position, so the funding gaps don't misalign buckets.
 - **Windows with < 30 usable buckets are skipped.**
+
+## 2026-09-30 — Phase 2 analysis specification (written before any Phase 2 result)
+
+These fill in details HYPOTHESES.md leaves open. Fixed before running Phase 2.
+
+- **Sample:** BTCUSDT `book_ticker` + `trades`, 31 days (1st of month, 2023-09 → 2026-03). Test-split days excluded by the loader guard.
+- **One pass at 1 s.** 10 s and 60 s buckets are aggregated from the 1 s buckets: OFI, TI, ΔMid and event counts sum (ΔMid telescopes exactly), and depth and spread take the last value. This is covered by a test that the aggregated buckets equal direct bucketing. Raw days are read in 5M-row chunks to stay within 8 GB of RAM (tested: chunked output = single-pass output).
+- **Trade imbalance (H4):** TI_k = Σ signed trade size in bucket k, positive when Tardis `side` = buy (taker buy), exchange timestamp.
+- **H2 statistic:** median over all windows of R²(ΔMid ~ OFI + OFI·|OFI|) minus median R²(ΔMid ~ OFI). Pass if < 0.02.
+- **H4 statistic:** median R²(OFI) − median R²(TI) over all windows. 95% CI = percentile interval from 10,000 bootstrap draws that resample whole days (seed 20260930). Pass if the lower bound > 0.
+- **H3 model:** β_w = exp(a + γ·Z_w) · D_w^(−λ), fitted by nonlinear least squares on β levels (`scipy.optimize.least_squares`; scipy is already a statsmodels dependency). Z_w = dummies for 4-hour UTC blocks (00–04 is the baseline) + a weekend dummy. The λ CI comes from the same day-block bootstrap (10,000 draws, same seed). Starting values come from log-log OLS on windows with β̂ > 0 (used only to initialise).
+- **H1 aggregate uncertainty:** day-block bootstrap CI for pooled median R².
+- **Main specification** is 10 s / 30 min. H1–H4 are also reported at 1 s / 30 min and 60 s / 2 h as robustness. The pass/fail verdicts use the main specification only.
+- **Exploratory, not pre-registered:** does R² depend on how often the spread is > 1 tick (window share of bucket-end spreads > 1 tick)? Reported with Spearman ρ and a quintile split, and labelled exploratory in the memo and the ledger.
+- **Not repeated:** the `quotes` robustness check (done on 2025-09-01 in Phase 1).
