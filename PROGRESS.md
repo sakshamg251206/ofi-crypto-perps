@@ -8,4 +8,4 @@
 - [ ] **Phase 5:** memo + README.
 
 ## Log
-- 2026-09-30 — Research design v1 frozen (HYPOTHESES.md). Data source verified: Tardis `quotes` is L2-derived and ~25 ms batched; `quotes` vs `book_ticker` choice open for Phase 1 (see DECISIONS.md).
+- 2026-09-30 — Research design v1 frozen (HYPOTHESES.md). Data source verified: Tardis `quotes` is L2-derived and ~25 ms batched; main dataset `book_ticker`, `quotes` as robustness (see DECISIONS.md).

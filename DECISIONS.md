@@ -38,3 +38,7 @@ Measured on BTCUSDT 2026-09-01 (both files are free on the 1st of the month):
 - **Funding-window exclusion (±2 min around 00:00, 08:00, 16:00 UTC).** Funding settlements cause mechanical position adjustments and quote withdrawals unrelated to normal order flow. These are a known Binance-perp specific distortion that CKS's stocks don't have.
 - **Break-even bps instead of pass/fail for H6.** Fees depend on tier and change over time. A break-even cost lets any reader compare the result to their own costs, and it avoids tuning a pass threshold after seeing results.
 - **Third-symbol selection rule applied to pre-sample data (2023-08-01).** Choosing the symbol on in-sample data would be peeking. A mechanical rule on a date before the sample starts fixes the choice without looking at any result. The target is a symbol with spread often > 1 tick, i.e. less tick-constrained, closer to CKS's stocks.
+
+## 2026-09-30 — Main dataset: `book_ticker`; `quotes` as robustness
+
+Resolves the open item above. CKS define e_n per top-of-book event. `book_ticker` (native Binance bookTicker) records each change, while `quotes` batches ~19 events per row. The choice was made on fidelity to the method, before any OFI or regression was computed. Cost: up to ~250 MB / 37M rows per day. Handled by processing one day at a time and keeping only the bucketed output.
