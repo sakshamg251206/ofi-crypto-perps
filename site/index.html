@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OFI Explains, Not Predicts</title>
+  <meta name="description" content="A pre-registered test of whether order-flow imbalance explains and predicts short-term price moves on Binance BTC, ETH and WLD perpetual futures.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M7 21l6-6 4 4 8-9' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="wrap topbar__inner">
+      <a class="brand" href="#top" aria-label="Back to top">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7"/><path d="M7 21l6-6 4 4 8-9"/></svg>
+        </span>
+        <span class="brand__name">Order-flow imbalance <span class="muted">in crypto perps</span></span>
+      </a>
+      <nav class="nav" aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#scorecard">Scorecard</a>
+        <a href="#explore">Explore</a>
+        <a href="#predict">Prediction</a>
+        <a href="#method">Method</a>
+        <a class="nav__gh" href="https://github.com/sakshamg251206/ofi-crypto-perps">Code</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap">
+        <p class="eyebrow">Pre-registered replication · Binance USDⓈ-M perpetuals · 2023–2026</p>
+        <h1>Order flow <em class="explain">explains</em> crypto price moves.<br>It doesn't <em class="predict">predict</em> them.</h1>
+        <p class="lede">
+          When more pressure hits the buy side of the order book than the sell side, the price rises
+          <strong>in the same 10 seconds</strong>, reliably. But that pressure says almost nothing about where the price goes
+          <strong>in the next 10 seconds</strong>. This page shows the evidence from tick-level data on BTC, ETH and WLD futures,
+          tested against hypotheses written down before any result was seen.
+        </p>
+        <div class="stats" id="hero-stats" aria-live="polite">
+          <div class="stat skeleton"></div><div class="stat skeleton"></div><div class="stat skeleton"></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="app-error" class="wrap" hidden></div>
+
+    <section class="section" id="how">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <p class="section__intro">Order-flow imbalance (OFI), from Cont, Kukanov &amp; Stoikov (2014), measures net buying pressure at the best prices. Three steps:</p>
+        <ol class="steps">
+          <li class="step">
+            <span class="step__num">1</span>
+            <h3>Watch the top of the book</h3>
+            <p>Every change to the best bid (highest buy order) and best ask (lowest sell order) on Binance is recorded: millions of updates per symbol per day.</p>
+          </li>
+          <li class="step">
+            <span class="step__num">2</span>
+            <h3>Score each change</h3>
+            <p>New buy orders, or sell orders being cancelled or filled, count as <span class="pos">+ pressure</span>. The mirror events count as <span class="neg">− pressure</span>. Summing over 10 seconds gives the OFI.</p>
+          </li>
+          <li class="step">
+            <span class="step__num">3</span>
+            <h3>Compare with the price</h3>
+            <p><strong class="explain">Explain:</strong> does OFI line up with the price change in the <em>same</em> 10 s? <strong class="predict">Predict:</strong> does it forecast the <em>next</em> 10 s, using only data you would really have had?</p>
+          </li>
+        </ol>
+        <details class="formula">
+          <summary>The exact definition</summary>
+          <p>For each top-of-book update <i>n</i>, with best bid price/size <i>P<sup>b</sup>, q<sup>b</sup></i> and best ask <i>P<sup>a</sup>, q<sup>a</sup></i>:</p>
+          <p class="math">e<sub>n</sub> = 1{P<sup>b</sup><sub>n</sub> ≥ P<sup>b</sup><sub>n−1</sub>} q<sup>b</sup><sub>n</sub> − 1{P<sup>b</sup><sub>n</sub> ≤ P<sup>b</sup><sub>n−1</sub>} q<sup>b</sup><sub>n−1</sub> − 1{P<sup>a</sup><sub>n</sub> ≤ P<sup>a</sup><sub>n−1</sub>} q<sup>a</sup><sub>n</sub> + 1{P<sup>a</sup><sub>n</sub> ≥ P<sup>a</sup><sub>n−1</sub>} q<sup>a</sup><sub>n−1</sub></p>
+          <p>OFI<sub>k</sub> = Σ e<sub>n</sub> over bucket <i>k</i>, and each 30-minute window is fitted as ΔMid<sub>k</sub> = α + β·OFI<sub>k</sub> + ε (Newey–West errors). Prices are in ticks, sizes in coins. Funding times (00/08/16 UTC ± 2 min) are excluded.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="scorecard">
+      <div class="wrap">
+        <h2>Scorecard</h2>
+        <p class="section__intro">Six hypotheses with pass criteria fixed in advance. Each symbol is judged on its own, on the main specification (10-second buckets, 30-minute windows). Brackets are 95% day-block bootstrap intervals.</p>
+        <div class="table-scroll">
+          <table class="scorecard" id="scorecard-table">
+            <caption class="sr-only">Hypothesis results per symbol</caption>
+            <thead><tr><th scope="col">Hypothesis</th><th scope="col">Pass if</th><th scope="col">BTCUSDT</th><th scope="col">ETHUSDT</th><th scope="col">WLDUSDT</th></tr></thead>
+            <tbody><tr><td colspan="5"><div class="skeleton skeleton--row"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="explore">
+      <div class="wrap">
+        <div class="section__head">
+          <div>
+            <h2>Explore the explanation</h2>
+            <p class="section__intro">31 days per symbol, one day per month from September 2023 to March 2026, 1,488 thirty-minute windows each. Hover or tap the charts for values.</p>
+          </div>
+          <div class="tabs" role="tablist" aria-label="Symbol" id="symbol-tabs"></div>
+        </div>
+        <div class="grid">
+          <figure class="card card--wide">
+            <figcaption>
+              <h3>How much of each 10-second price move does order flow explain?</h3>
+              <p>Median R² per day across that day's 30-minute windows. Order flow (solid) versus trade imbalance, which only counts executed trades (dashed).</p>
+            </figcaption>
+            <div class="chart" id="chart-days" role="img"></div>
+            <div class="legend" id="legend-days"></div>
+          </figure>
+          <figure class="card">
+            <figcaption>
+              <h3>Thicker books move less per unit of flow</h3>
+              <p>Each dot is one window: slope β against average depth, log scales. The line is the fitted β ∝ depth<sup>−λ</sup>; theory says λ ≈ 1.</p>
+            </figcaption>
+            <div class="chart chart--square" id="chart-depth" role="img"></div>
+            <p class="note" id="note-depth"></p>
+          </figure>
+          <figure class="card">
+            <figcaption>
+              <h3>Does the answer depend on bucket size?</h3>
+              <p>Median window R² for 1-second, 10-second (main) and 60-second buckets. Same verdicts at every size.</p>
+            </figcaption>
+            <div class="chart chart--short" id="chart-specs" role="img"></div>
+            <h3 class="card__sub">Exploratory: wider spreads, weaker fit</h3>
+            <p class="card__subtext">Windows split into fifths by how often the spread was wider than one tick. Not pre-registered; BTC and ETH barely vary on this axis.</p>
+            <div class="chart chart--short" id="chart-quintiles" role="img"></div>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="predict">
+      <div class="wrap">
+        <h2>Does it predict?</h2>
+        <p class="section__intro">
+          The prediction test uses only what a trader could have known: data timed by when it <em>arrived</em>, plus 100 ms of latency before the forecast window starts.
+          One slope per symbol was fitted on 24 training days, checked on 7 validation days, then frozen and run <strong>once</strong> on 6 held-out days (April–September 2026).
+        </p>
+        <div class="grid grid--two">
+          <figure class="card">
+            <figcaption>
+              <h3>Out-of-sample R² on the held-out days</h3>
+              <p>Above zero would mean the forecast beats "the price won't move". Whiskers are 95% intervals.</p>
+            </figcaption>
+            <div class="chart chart--short" id="chart-oos" role="img"></div>
+            <div class="table-scroll"><table class="mini" id="oos-table"></table></div>
+          </figure>
+          <figure class="card">
+            <figcaption>
+              <h3>Edge per trade versus the cost of trading</h3>
+              <p>Average gain per trade from following the forecast's sign (before costs), next to the cost of one trade: Binance's 5 bps taker fee plus half the spread. 1 bp = 0.01%.</p>
+            </figcaption>
+            <div class="chart chart--short" id="chart-cost" role="img"></div>
+            <p class="note" id="note-cost"></p>
+          </figure>
+        </div>
+        <figure class="card card--flat">
+          <figcaption>
+            <h3>Every model tried, held-out days <span class="muted" id="models-symbol"></span></h3>
+            <p>None beats the zero forecast. Latency is the delay between the forecast and the trade.</p>
+          </figcaption>
+          <div class="table-scroll"><table class="mini mini--models" id="models-table"></table></div>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="method">
+      <div class="wrap">
+        <h2>How this was kept honest</h2>
+        <div class="grid grid--two">
+          <ol class="timeline">
+            <li><span class="timeline__tag">Before any result</span><strong>Hypotheses frozen.</strong> Pass criteria, sample, train/validation/test split and inference written down and committed.</li>
+            <li><span class="timeline__tag">Data source</span><strong>Native Binance quotes chosen</strong> over a batched alternative, on fidelity to the method and before any result.</li>
+            <li><span class="timeline__tag">Explain, H1–H4</span><strong>Run on BTC, then ETH and a third symbol.</strong> The third (WLD) was picked by a fixed rule on a date before the sample began.</li>
+            <li><span class="timeline__tag">Predict, H5–H6</span><strong>Timing rule logged before code.</strong> A property test proves the forecast target never overlaps its input.</li>
+            <li><span class="timeline__tag">One shot</span><strong>Held-out days opened once.</strong> The data loader refuses them everywhere else. Results were committed whatever they showed.</li>
+          </ol>
+          <div class="facts">
+            <dl>
+              <dt>Data</dt><dd>Tardis.dev free first-of-month files: Binance USDⓈ-M <code>book_ticker</code> (every top-of-book change) and <code>trades</code>.</dd>
+              <dt>Sample</dt><dd><span id="fact-sample">31 days per symbol</span>, plus 6 held-out test days.</dd>
+              <dt>Every run logged</dt><dd>All analysis runs are in a trial ledger, so the amount of testing is visible.</dd>
+              <dt>Limitations</dt><dd>One day per month, one venue, one simple model at one 10-second horizon. A null here doesn't rule out OFI as one input among many, or for passive (maker) execution.</dd>
+            </dl>
+            <p class="links">
+              <a class="button" href="https://github.com/sakshamg251206/ofi-crypto-perps/blob/main/research/memo.md">Read the full write-up</a>
+              <a class="button button--ghost" href="https://github.com/sakshamg251206/ofi-crypto-perps/blob/main/docs/HYPOTHESES.md">Pre-registration</a>
+              <a class="button button--ghost" href="https://github.com/sakshamg251206/ofi-crypto-perps/blob/main/docs/DECISIONS.md">Decision log</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>Every number on this page is read from the committed reports and per-window results by <code>ofi site</code>; nothing is typed in by hand. Research, not investment advice.</p>
+    </div>
+  </footer>
+
+  <div class="tooltip" id="tooltip" role="status" hidden></div>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
