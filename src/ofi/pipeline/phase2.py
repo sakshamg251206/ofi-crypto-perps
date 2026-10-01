@@ -1,24 +1,23 @@
-"""H1–H4 on all non-test days of one symbol, per the Phase 2 spec in DECISIONS.md (2026-09-30).
+"""H1–H4 on all in-sample days of one symbol, per the Phase 2 spec in docs/DECISIONS.md (2026-09-30).
 
-Run: .venv/bin/python scripts/run_phase2.py [--symbol BTCUSDT] [--phase 2] [--boot N]
-Input: data/buckets/book_ticker/<SYMBOL>/<date>_1s.parquet (scripts/build_buckets.py)
+Run: ofi phase2 [--symbol BTCUSDT] [--phase 2] [--boot N]   (Phase 3 = the same analysis with --phase 3)
+Input: data/buckets/book_ticker/<SYMBOL>/<date>_1s.parquet (ofi buckets)
 Output: reports/phase<P>_<SYMBOL>.md, research/phase<P>_windows_<SYMBOL>_<freq>s.csv, ledger rows.
 """
 import argparse
 import datetime as dt
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-from build_buckets import DATES, bucket_path
+from ofi.config import DATES, REPORTS_DIR, RESEARCH_DIR
 from ofi.ledger import log_run
 from ofi.ofi import drop_funding, resample_buckets
+from ofi.pipeline.buckets import bucket_path
 from ofi.regress import window_features, window_regressions
 from ofi.stats import block_bootstrap, fit_depth_nls, percentile_ci
 
-ROOT = Path(__file__).resolve().parents[1]
 SPECS = [("main 10s/30min", 10, 1800), ("robust 1s/30min", 1, 1800), ("robust 60s/2h", 60, 7200)]
 
 
@@ -58,10 +57,11 @@ def stats_vector(W: pd.DataFrame) -> np.ndarray:
 
 
 def analyse(W: pd.DataFrame, n_boot: int) -> dict:
-    point = stats_vector(W)
+    fit = fit_depth_nls(W["beta"].to_numpy(), W["depth_mean"].to_numpy(), controls(W))
+    point = np.array([W["r2_ofi"].median(), W["r2_quad"].median() - W["r2_ofi"].median(),
+                      W["r2_ofi"].median() - W["r2_ti"].median(), fit["lam"]])  # = stats_vector(W)
     draws = block_bootstrap(W, "day", stats_vector, n=n_boot)
     lo, hi = percentile_ci(draws)
-    fit = fit_depth_nls(W["beta"].to_numpy(), W["depth_mean"].to_numpy(), controls(W))
     rho, p = spearmanr(W["r2_ofi"], W["frac_spread_gt1"])
     q = pd.qcut(W["frac_spread_gt1"].rank(method="first"), 5, labels=False)
     return {
@@ -124,7 +124,8 @@ def report(results: dict, per_day: pd.DataFrame, n_boot: int, symbol: str, phase
         lines.append(f"- **{name}:** Spearman ρ = {rho:.3f} (p = {p:.2g}). Median R² by spread-share quintile (low→high): "
                      f"{r['expl_r2_by_spread_quintile']}; quintile median share: {r['expl_spread_gt1_by_quintile']}")
     lines += ["", "## Per day (main spec)", "",
-              "| day | events | windows | β>0 share | median R² | median R² TI | median depth (BTC) | spread>1 share |",
+              f"| day | events | windows | β>0 share | median R² | median R² TI | median depth ({symbol.removesuffix('USDT')}) "
+              "| spread>1 share |",
               "|---|---|---|---|---|---|---|---|"]
     for d, r in per_day.iterrows():
         lines.append(f"| {d} | {r.events:,.0f} | {r.windows:.0f} | {r.beta_pos:.3f} | {r.r2:.3f} | {r.r2_ti:.3f} | "
@@ -132,20 +133,24 @@ def report(results: dict, per_day: pd.DataFrame, n_boot: int, symbol: str, phase
     return "\n".join(lines) + "\n"
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--boot", type=int, default=10_000)
-    ap.add_argument("--symbol", default="BTCUSDT")
-    ap.add_argument("--phase", type=int, default=2)
-    args = ap.parse_args()
-    n_boot, symbol, phase = args.boot, args.symbol, args.phase
+def add_arguments(ap: argparse.ArgumentParser) -> None:
+    ap.add_argument("--symbol", default="BTCUSDT", help="symbol with buckets built (default: %(default)s)")
+    ap.add_argument("--phase", type=int, choices=(2, 3), default=2,
+                    help="label for outputs: 2 = BTCUSDT, 3 = ETHUSDT/WLDUSDT (default: %(default)s)")
+    ap.add_argument("--boot", type=int, default=10_000, help="day-block bootstrap draws (default: %(default)s)")
 
+
+def run(args: argparse.Namespace) -> None:
+    n_boot, symbol, phase = args.boot, args.symbol, args.phase
     missing = [d for d in DATES if not bucket_path(d, symbol).exists()]
+    if len(missing) == len(DATES):
+        raise SystemExit(f"No buckets for {symbol} in {bucket_path(DATES[0], symbol).parent}. "
+                         f"Run `ofi buckets --symbol {symbol}` first.")
     days = {d: pd.read_parquet(bucket_path(d, symbol)) for d in DATES if d not in missing}
     results, per_day = {}, None
     for name, freq_s, window_s in SPECS:
         W = pd.concat([windows_for_day(b1, d, freq_s, window_s) for d, b1 in days.items()]).dropna()
-        W.to_csv(ROOT / "research" / f"phase{phase}_windows_{symbol}_{freq_s}s.csv")
+        W.to_csv(RESEARCH_DIR / f"phase{phase}_windows_{symbol}_{freq_s}s.csv")
         print(f"[{name}] {len(W)} windows, bootstrapping", flush=True)
         results[name] = analyse(W, n_boot)
         v = verdicts(results[name])
@@ -165,9 +170,5 @@ def main() -> None:
                                     "gt1": g["frac_spread_gt1"].median()})
 
     md = report(results, per_day, n_boot, symbol, phase, missing)
-    (ROOT / "reports" / f"phase{phase}_{symbol}.md").write_text(md)
+    (REPORTS_DIR / f"phase{phase}_{symbol}.md").write_text(md)
     print(md)
-
-
-if __name__ == "__main__":
-    main()

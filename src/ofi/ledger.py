@@ -1,10 +1,10 @@
-"""Append-only trial ledger: every analysis run adds a row (RULES.md rule)."""
+"""Append-only trial ledger: every analysis run adds a row (research rule, see CONTRIBUTING.md)."""
 import csv
 import datetime as dt
 import subprocess
 from pathlib import Path
 
-LEDGER = Path(__file__).resolve().parents[2] / "research" / "trial_ledger.csv"
+from ofi.config import LEDGER_PATH as LEDGER
 
 
 def _git_sha() -> str:

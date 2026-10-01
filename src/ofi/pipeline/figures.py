@@ -1,26 +1,29 @@
-"""Memo figures for H1–H4 from saved per-window results (no re-estimation except the H3 point fit).
+"""Memo figures from saved per-window results (no re-estimation except the H3 point fit).
 
-Run: .venv/bin/python scripts/make_figures.py
-Output: research/figures/fig{1,2,3}_*.png
+Run: ofi figures   (needs the `figures` extra; fig1 needs BTCUSDT buckets, fig4 needs test-day frames)
+Output: research/figures/fig{1,2,3,4}_*.png
 """
-from pathlib import Path
+import argparse
+import json
 
 import matplotlib
+import numpy as np
+import pandas as pd
+
+from ofi.config import FIGURES_DIR as OUT
+from ofi.config import MODELS_PATH, RESEARCH_DIR, TEST
+from ofi.ofi import drop_funding, resample_buckets
+from ofi.pipeline.buckets import bucket_path
+from ofi.pipeline.frames import frame_path
+from ofi.pipeline.phase2 import controls
+from ofi.predict import oos_r2
+from ofi.stats import fit_depth_nls
 
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LogFormatterSciNotation, NullFormatter
-import numpy as np
-import pandas as pd
 
-from build_buckets import bucket_path
-from ofi.ofi import drop_funding, resample_buckets
-from ofi.stats import fit_depth_nls
-from run_phase2 import controls
-
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "research" / "figures"
 # Validated categorical slots 1–3 (dataviz reference palette, all-pairs, light mode).
 SYMBOLS = {"BTCUSDT": ("#2a78d6", "o", 2), "ETHUSDT": ("#eb6834", "s", 3), "WLDUSDT": ("#1baf7a", "^", 3)}
 INK, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
@@ -35,7 +38,7 @@ plt.rcParams.update({
 
 def windows(symbol: str) -> pd.DataFrame:
     phase = 2 if symbol == "BTCUSDT" else 3
-    return pd.read_csv(ROOT / "research" / f"phase{phase}_windows_{symbol}_10s.csv", index_col=0)
+    return pd.read_csv(RESEARCH_DIR / f"phase{phase}_windows_{symbol}_10s.csv", index_col=0)
 
 
 def fig1_example_window() -> None:
@@ -107,11 +110,7 @@ def fig3_beta_vs_depth(lam_ci: dict[str, tuple[float, float]]) -> None:
 
 def fig4_explain_vs_predict() -> dict:
     """Same test days, same receive clock: OFI vs ΔMid of the same interval vs out-of-sample R² for the next one."""
-    import json
-    from build_predict_frames import frame_path
-    from final_test_run import TEST
-    from ofi.predict import oos_r2
-    frozen = json.loads((ROOT / "research" / "phase4_models.json").read_text())["models"]
+    frozen = json.loads(MODELS_PATH.read_text())["models"]
     vals = {}
     for sym in SYMBOLS:
         df = pd.concat([pd.read_parquet(frame_path(sym, d)) for d in TEST])
@@ -123,7 +122,7 @@ def fig4_explain_vs_predict() -> dict:
     x = np.arange(len(vals))
     w = 0.36
     same_c, next_c = "#2a78d6", "#eb6834"
-    for i, (sym, (same, nxt)) in enumerate(vals.items()):
+    for i, (same, nxt) in enumerate(vals.values()):
         ax.bar(i - w / 2 - 0.01, same, w, color=same_c, label="Same interval (explains)" if i == 0 else None)
         ax.bar(i + w / 2 + 0.01, nxt, w, color=next_c, label="Next interval, out of sample (predicts)" if i == 0 else None)
         ax.text(i - w / 2 - 0.01, same + 0.02, f"{same:.2f}", ha="center", color=INK, fontsize=8)
@@ -139,16 +138,16 @@ def fig4_explain_vs_predict() -> dict:
     return vals
 
 
-def main() -> None:
+def add_arguments(ap: argparse.ArgumentParser) -> None:
+    pass
+
+
+def run(args: argparse.Namespace) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    # λ CIs come from the committed reports (10,000-draw bootstrap), not recomputed here.
+    # λ CIs come from the committed phase 2/3 reports (10,000-draw bootstrap), not recomputed here.
     lam_ci = {"BTCUSDT": (0.346, 1.057), "ETHUSDT": (0.952, 1.291), "WLDUSDT": (0.873, 1.339)}
     fig1_example_window()
     fig2_r2_over_time()
     fig3_beta_vs_depth(lam_ci)
     print("fig4 values (same-interval R², next-interval OOS R²):", fig4_explain_vs_predict())
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
-
-
-if __name__ == "__main__":
-    main()

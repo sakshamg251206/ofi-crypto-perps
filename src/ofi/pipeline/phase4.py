@@ -1,28 +1,25 @@
 """Phase 4 (H5/H6) on non-test days: fit on train, evaluate on validation, walk-forward robustness.
 
-Run: .venv/bin/python scripts/run_phase4.py [--boot N]
+Run: ofi phase4 [--boot N]
+Input: data/predict/<SYMBOL>/<date>.parquet (ofi frames)
 Output: reports/phase4_<SYMBOL>.md, research/phase4_models.json (frozen train fits for the final test run).
-Verdicts are NOT issued here: H5/H6 are judged on the test days only (scripts/final_test_run.py).
+Verdicts are NOT issued here: H5/H6 are judged on the test days only (ofi final-test).
 """
 import argparse
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from build_buckets import DATES
-from build_predict_frames import SYMBOLS, frame_path
+from ofi.config import DATES, MODELS_PATH, REPORTS_DIR, SYMBOLS, TRAIN, VALID
 from ofi.ledger import log_run
+from ofi.pipeline.frames import frame_path
 from ofi.predict import fit_ols, oos_r2, sign_strategy_pnl
 from ofi.stats import block_bootstrap, percentile_ci
 
-ROOT = Path(__file__).resolve().parents[1]
-TRAIN = [d for d in DATES if d <= "2025-08-01"]
-VALID = [d for d in DATES if "2025-09-01" <= d <= "2026-03-01"]
 LATENCIES = (0, 100, 500)
 MAIN_L = 100
-FEE_BPS = 5.0  # Binance USDⓈ-M VIP 0 taker; secondary sources checked 2026-10-01 (DECISIONS.md)
+FEE_BPS = 5.0  # Binance USDⓈ-M VIP 0 taker; secondary sources checked 2026-10-01 (research/memo.md)
 WALK_MIN_DAYS = 12
 
 
@@ -33,6 +30,10 @@ def features(df: pd.DataFrame) -> dict[str, np.ndarray]:
 
 
 def load(symbol: str, dates: list[str]) -> pd.DataFrame:
+    missing = [d for d in dates if not frame_path(symbol, d).exists()]
+    if missing:
+        raise SystemExit(f"Missing prediction frames for {symbol}: {', '.join(missing)}. "
+                         f"Run `ofi frames --symbols {symbol}` first.")
     return pd.concat([pd.read_parquet(frame_path(symbol, d)) for d in dates])
 
 
@@ -58,7 +59,8 @@ def evaluate(df: pd.DataFrame, models: dict, n_boot: int, seed: int = 20260930) 
             r["oos_r2_ci"] = percentile_ci(draws)
         strat = pd.DataFrame({"y": y, "yhat": yhat, "mid_entry": df[f"mid_entry_{L}"].to_numpy(),
                               "half_spread_bps": df[f"half_spread_bps_{L}"].to_numpy()}, index=df.index)
-        assert df["tick"].nunique() == 1, "tick changed within sample; handle per day"
+        if df["tick"].nunique() != 1:
+            raise ValueError("tick changed within sample; evaluate per day")
         tick = df["tick"].iloc[0]
         pnl = sign_strategy_pnl(strat, tick=tick, fee_bps=FEE_BPS, freq_s=10)
         r |= {"gross_bps_per_bucket": pnl["gross_bps_per_bucket"], "break_even_bps": pnl["break_even_bps"],
@@ -71,9 +73,10 @@ def evaluate(df: pd.DataFrame, models: dict, n_boot: int, seed: int = 20260930) 
 
 def walk_forward(symbol: str) -> pd.DataFrame:
     """Expanding window over non-test days: fit on all earlier days, predict the next day (main model)."""
+    all_days = load(symbol, DATES)
     rows = []
     for i in range(WALK_MIN_DAYS, len(DATES)):
-        train, test = load(symbol, DATES[:i]), load(symbol, [DATES[i]])
+        train, test = all_days[all_days["day"].isin(DATES[:i])], all_days[all_days["day"] == DATES[i]]
         a, b = fit_ols(train["x"].to_numpy(), train[f"y_{MAIN_L}"].to_numpy())
         y = test[f"y_{MAIN_L}"].to_numpy()
         yhat = a + b * test["x"].to_numpy()
@@ -89,10 +92,12 @@ def fmt(df: pd.DataFrame) -> str:
                      + ["| " + " | ".join(f(v) for v in r) + " |" for r in df.itertuples(index=False)])
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--boot", type=int, default=10_000)
-    n_boot = ap.parse_args().boot
+def add_arguments(ap: argparse.ArgumentParser) -> None:
+    ap.add_argument("--boot", type=int, default=10_000, help="day-block bootstrap draws (default: %(default)s)")
+
+
+def run(args: argparse.Namespace) -> None:
+    n_boot = args.boot
     frozen = {}
     for sym in SYMBOLS:
         train, valid = load(sym, TRAIN), load(sym, VALID)
@@ -118,12 +123,8 @@ def main() -> None:
               "## Train fit (in sample, for reference only)", "", fmt(ins), "",
               f"## Walk-forward (expanding, refit daily, first {WALK_MIN_DAYS} days as initial train; main model)", "",
               f"Pooled out-of-sample R²: **{wf_pooled:.4f}**", "", fmt(wf[["day", "b", "oos_r2"]]), ""]
-        (ROOT / "reports" / f"phase4_{sym}.md").write_text("\n".join(md))
+        (REPORTS_DIR / f"phase4_{sym}.md").write_text("\n".join(md))
         print(f"{sym}: validation main oos R² = {main.oos_r2:.4f} {main.get('oos_r2_ci')}, "
               f"break-even = {main.break_even_bps:.3f} bps, walk-forward pooled R² = {wf_pooled:.4f}", flush=True)
-    (ROOT / "research" / "phase4_models.json").write_text(json.dumps(
+    MODELS_PATH.write_text(json.dumps(
         {"fit_on": TRAIN, "fee_bps": FEE_BPS, "main": f"ofi_L{MAIN_L}", "models": frozen}, indent=2))
-
-
-if __name__ == "__main__":
-    main()

@@ -1,21 +1,22 @@
-"""Apply the pre-registered third-symbol rule to 2023-08-01 data only (DECISIONS.md, 2026-10-01).
+"""Apply the pre-registered third-symbol rule to 2023-08-01 data only (docs/DECISIONS.md, 2026-10-01).
 
-Run: .venv/bin/python scripts/select_third_symbol.py
+Run: ofi select-symbol
 Output: reports/third_symbol_selection.md
 """
+import argparse
 import io
 import re
 import urllib.error
 import urllib.request
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 import pandas as pd
 
-from build_buckets import day_buckets
+from ofi.config import REPORTS_DIR
+from ofi.pipeline.buckets import day_buckets
 
-ROOT = Path(__file__).resolve().parents[1]
+TIMEOUT_S = 60
 DATE = "2023-08-01"
 LIST_URL = "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?delimiter=/&prefix=data/futures/um/daily/klines/"
 KLINE_URL = "https://data.binance.vision/data/futures/um/daily/klines/{s}/1d/{s}-1d-{d}.zip"
@@ -26,7 +27,7 @@ def list_symbols() -> list[str]:
     """All USDⓈ-M kline directories on data.binance.vision (paginated S3 listing)."""
     syms, marker = [], ""
     while True:
-        xml = urllib.request.urlopen(f"{LIST_URL}&marker={marker}").read().decode()
+        xml = urllib.request.urlopen(f"{LIST_URL}&marker={marker}", timeout=TIMEOUT_S).read().decode()
         syms += re.findall(r"<Prefix>data/futures/um/daily/klines/([^/<]+)/</Prefix>", xml)
         m = re.search(r"<NextMarker>([^<]+)</NextMarker>", xml)
         if "<IsTruncated>true</IsTruncated>" not in xml or not m:
@@ -37,7 +38,7 @@ def list_symbols() -> list[str]:
 def quote_volume(symbol: str) -> float | None:
     """2023-08-01 daily quote volume (USDT), or None if the symbol had no kline that day."""
     try:
-        raw = urllib.request.urlopen(KLINE_URL.format(s=symbol, d=DATE)).read()
+        raw = urllib.request.urlopen(KLINE_URL.format(s=symbol, d=DATE), timeout=TIMEOUT_S).read()
     except urllib.error.HTTPError:
         return None
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
@@ -47,7 +48,11 @@ def quote_volume(symbol: str) -> float | None:
     return float(row[7])  # column 7 = quote_volume
 
 
-def main() -> None:
+def add_arguments(ap: argparse.ArgumentParser) -> None:
+    pass
+
+
+def run(args: argparse.Namespace) -> None:
     perps = [s for s in list_symbols() if re.fullmatch(r"[A-Z0-9]+USDT", s) and s not in EXCLUDE]
     with ThreadPoolExecutor(16) as ex:
         vols = dict(zip(perps, ex.map(quote_volume, perps)))
@@ -72,9 +77,5 @@ def main() -> None:
              f"**Selected: {pick}**", "", "| " + " | ".join(t.columns) + " |", "|" + "---|" * len(t.columns)]
     lines += ["| " + " | ".join(f"{v:.4g}" if isinstance(v, float) else str(v) for v in r) + " |"
               for r in t.itertuples(index=False)]
-    (ROOT / "reports" / "third_symbol_selection.md").write_text("\n".join(lines) + "\n")
+    (REPORTS_DIR / "third_symbol_selection.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
-
-
-if __name__ == "__main__":
-    main()

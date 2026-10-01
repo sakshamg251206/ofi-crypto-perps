@@ -68,7 +68,7 @@ class FakeResponse(_io.BytesIO):
 
 def test_download_rejects_truncated_body(tmp_path, monkeypatch):
     import ofi.io as oio
-    monkeypatch.setattr(oio.urllib.request, "urlopen", lambda url: FakeResponse(b"abc", declared=10))
+    monkeypatch.setattr(oio.urllib.request, "urlopen", lambda url, timeout=None: FakeResponse(b"abc", declared=10))
     with pytest.raises(IOError):
         download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path)
     assert not [p for p in tmp_path.rglob("*") if p.is_file()]
@@ -77,7 +77,7 @@ def test_download_rejects_truncated_body(tmp_path, monkeypatch):
 def test_download_retries_then_succeeds(tmp_path, monkeypatch):
     import ofi.io as oio
     calls = iter([FakeResponse(b"abc", 10), FakeResponse(b"0123456789", 10)])
-    monkeypatch.setattr(oio.urllib.request, "urlopen", lambda url: next(calls))
+    monkeypatch.setattr(oio.urllib.request, "urlopen", lambda url, timeout=None: next(calls))
     p = download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path)
     assert p.read_bytes() == b"0123456789"
 
@@ -86,7 +86,7 @@ def test_download_retries_after_connection_reset(tmp_path, monkeypatch):
     import ofi.io as oio
     state = {"n": 0}
 
-    def flaky(url):
+    def flaky(url, timeout=None):
         state["n"] += 1
         if state["n"] == 1:
             raise ConnectionResetError(54, "Connection reset")
@@ -105,3 +105,29 @@ def test_test_dates_can_be_unlocked_only_explicitly():
         assert_not_test_date("2026-05-01")
     with pytest.raises(HeldOutDateError):
         assert_not_test_date("2026-05-01")
+
+
+def test_download_gives_up_with_the_underlying_error(tmp_path, monkeypatch):
+    import ofi.io as oio
+    seen = []
+
+    def down(url, timeout=None):
+        seen.append(timeout)
+        raise ConnectionRefusedError(111, "Connection refused")
+
+    monkeypatch.setattr(oio.urllib.request, "urlopen", down)
+    monkeypatch.setattr(oio.time, "sleep", lambda s: None)
+    with pytest.raises(OSError, match="failed after 4 attempts") as e:
+        download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path)
+    assert isinstance(e.value.__cause__, ConnectionRefusedError)
+    assert seen == [oio.TIMEOUT_S] * oio.MAX_ATTEMPTS  # never an unbounded wait
+    assert not [p for p in tmp_path.rglob("*") if p.is_file()]
+
+
+def test_download_skips_files_already_on_disk(tmp_path, monkeypatch):
+    import ofi.io as oio
+    p = oio.raw_path("trades", "BTCUSDT", "2024-07-01", tmp_path)
+    p.parent.mkdir(parents=True)
+    p.write_bytes(b"cached")
+    monkeypatch.setattr(oio.urllib.request, "urlopen", lambda *a, **k: pytest.fail("network used"))
+    assert download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path).read_bytes() == b"cached"

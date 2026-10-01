@@ -1,18 +1,17 @@
-"""Per-day H5/H6 frames on the receive clock (DECISIONS.md, 2026-10-01): x = OFI over [t_{k-1}, t_k),
+"""Per-day H5/H6 frames on the receive clock (docs/DECISIONS.md, 2026-10-01): x = OFI over [t_{k-1}, t_k),
 y_L = mid(t_{k+1}+L) - mid(t_k+L), for L in {0, 100, 500} ms. Non-test days only (loader guard).
 
-Run: .venv/bin/python scripts/build_predict_frames.py [--symbols BTCUSDT ETHUSDT WLDUSDT] [--dates ...]
+Run: ofi frames [--symbols BTCUSDT ETHUSDT WLDUSDT] [--dates ...]
 Output: data/predict/<SYMBOL>/<date>.parquet
 """
 import argparse
 import time
 
-from build_buckets import DATES, day_buckets
-from ofi.io import DATA_DIR, download_day, load_trades
+from ofi.config import DATA_DIR, DATES, SYMBOLS
+from ofi.io import download_day, load_trades
 from ofi.ofi import trade_imbalance
+from ofi.pipeline.buckets import day_buckets
 from ofi.predict import predictive_frame
-
-SYMBOLS = ["BTCUSDT", "ETHUSDT", "WLDUSDT"]
 
 
 def frame_path(symbol: str, date: str):
@@ -33,11 +32,13 @@ def build_frame(symbol: str, date: str):
     return len(fr), q["tick"]
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--symbols", nargs="+", default=SYMBOLS)
-    ap.add_argument("--dates", nargs="+", default=DATES)
-    a = ap.parse_args()
+def add_arguments(ap: argparse.ArgumentParser) -> None:
+    ap.add_argument("--symbols", nargs="+", default=list(SYMBOLS), help="default: %(default)s")
+    ap.add_argument("--dates", nargs="+", default=DATES, metavar="YYYY-MM-DD",
+                    help="days to build (default: all 31 in-sample days)")
+
+
+def run(a: argparse.Namespace) -> None:
     for sym in a.symbols:
         for d in a.dates:
             if frame_path(sym, d).exists():
@@ -45,7 +46,3 @@ def main() -> None:
             t = time.time()
             n, tick = build_frame(sym, d)
             print(f"{sym} {d} rows={n} tick={tick} {time.time() - t:.0f}s", flush=True)
-
-
-if __name__ == "__main__":
-    main()

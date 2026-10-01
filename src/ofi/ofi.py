@@ -41,7 +41,7 @@ def _chunk_aggregates(chunk, prev_row, day0, f, n_buckets, clock):
         "k": k, "e": e,
         "mid": ((chunk["bid_price"] + chunk["ask_price"]) / 2).to_numpy(),
         "depth": ((chunk["bid_amount"] + chunk["ask_amount"]) / 2).to_numpy(),
-        "spread": ((chunk["ask_price"] - chunk["bid_price"])).to_numpy(),
+        "spread": (chunk["ask_price"] - chunk["bid_price"]).to_numpy(),
     })
     before = parts[parts["k"] < 0]
     seed = before.iloc[-1] if len(before) else None
@@ -53,7 +53,7 @@ def _chunk_aggregates(chunk, prev_row, day0, f, n_buckets, clock):
 
 def bucketize_chunks(chunks, freq_s: float, tick: float, day0: int, clock: str = "timestamp") -> pd.DataFrame:
     """Bucketize one UTC day streamed as consecutive row chunks (see `bucketize`)."""
-    f = int(round(freq_s * US))
+    f = round(freq_s * US)
     n_buckets = DAY_US // f
     aggs, seed, prev_row = [], None, None
     for chunk in chunks:
@@ -115,7 +115,7 @@ def resample_buckets(buckets: pd.DataFrame, freq_s: int) -> pd.DataFrame:
 
 def trade_imbalance(trades: pd.DataFrame, day0: int, freq_s: float, clock: str = "timestamp") -> pd.Series:
     """TI_k = sum of signed trade size per bucket (+ taker buy, - taker sell); trades outside the day ignored."""
-    f = int(round(freq_s * US))
+    f = round(freq_s * US)
     n_buckets = DAY_US // f
     k = (trades[clock].to_numpy() - day0) // f
     side = trades["side"].to_numpy()
@@ -139,4 +139,4 @@ def overlaps_funding(start_us: np.ndarray, end_us: np.ndarray, minutes: int = 2)
 def drop_funding(buckets: pd.DataFrame, freq_s: int, minutes: int = 2) -> pd.DataFrame:
     """Drop buckets overlapping ±`minutes` around a funding time (00/08/16 UTC)."""
     t = buckets.index.to_numpy()
-    return buckets[~overlaps_funding(t, t + int(round(freq_s * US)), minutes)]
+    return buckets[~overlaps_funding(t, t + round(freq_s * US), minutes)]

@@ -1,21 +1,23 @@
-"""Phase 1 MVP: BTCUSDT, 3 days, download -> quality -> OFI -> H1 table -> placebo -> ledger.
+"""Phase 1 pilot: BTCUSDT, 3 days, download -> quality -> OFI -> H1 table -> placebo -> ledger.
 
-Run: .venv/bin/python scripts/run_phase1.py
+Run: ofi phase1
+Output: reports/phase1_h1.md, reports/quality/phase1/<dataset>_BTCUSDT_<date>.md, ledger rows.
+Needs ~10 GB of RAM: it loads whole days in memory (later phases stream in chunks).
 """
+import argparse
 import gc
 import json
-from pathlib import Path
 
 import pandas as pd
 
-from ofi.io import DATA_DIR, download_day, load_top_of_book
+from ofi.config import DATA_DIR
+from ofi.config import REPORTS_DIR as REPORTS
+from ofi.io import download_day, load_top_of_book
 from ofi.ledger import log_run
 from ofi.ofi import bucketize, drop_funding
 from ofi.quality import quality_report
 from ofi.regress import window_regressions
 
-ROOT = Path(__file__).resolve().parents[1]
-REPORTS = ROOT / "reports"
 SYMBOL, TICK, FREQ_S, WINDOW_S = "BTCUSDT", 0.1, 10, 1800
 RUNS = [("book_ticker", "2023-09-01"), ("book_ticker", "2024-09-01"), ("book_ticker", "2025-09-01"),
         ("quotes", "2025-09-01")]  # quotes = robustness (DECISIONS.md)
@@ -40,7 +42,9 @@ def process_day(dataset: str, date: str) -> pd.DataFrame:
     out = DATA_DIR / "buckets" / dataset / SYMBOL / f"{date}_{FREQ_S}s.parquet"
     out.parent.mkdir(parents=True, exist_ok=True)
     buckets.to_parquet(out)
-    (REPORTS / f"quality_{dataset}_{SYMBOL}_{date}.md").write_text(
+    qdir = REPORTS / "quality" / "phase1"
+    qdir.mkdir(parents=True, exist_ok=True)
+    (qdir / f"{dataset}_{SYMBOL}_{date}.md").write_text(
         f"# Data quality — {dataset} {SYMBOL} {date}\n\n```json\n{json.dumps(q, indent=2)}\n```\n")
     return kept
 
@@ -53,7 +57,11 @@ def summarize(reg: pd.DataFrame, placebo: dict[int, pd.DataFrame]) -> dict:
             **{f"placebo{s:+d}_r2_median": p["r2"].median() for s, p in placebo.items()}}
 
 
-def main() -> None:
+def add_arguments(ap: argparse.ArgumentParser) -> None:
+    pass
+
+
+def run(args: argparse.Namespace) -> None:
     REPORTS.mkdir(exist_ok=True)
     rows, pooled = [], []
     for dataset, date in RUNS:
@@ -85,7 +93,3 @@ def main() -> None:
         "H1 pass criterion: beta > 0 in >= 95% of windows. Median R^2 predicted 0.2-0.6 (not pass/fail).\n"
         "Placebo: OFI shifted +/-5 buckets; R^2 should collapse.\n\n" + md + "\n")
     print(md)
-
-
-if __name__ == "__main__":
-    main()

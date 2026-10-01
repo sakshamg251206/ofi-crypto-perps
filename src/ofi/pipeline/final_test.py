@@ -1,33 +1,32 @@
-"""THE one-shot H5/H6 test (HYPOTHESES.md): frozen train-period fits evaluated on the held-out test days.
+"""THE one-shot H5/H6 test (docs/HYPOTHESES.md): frozen train-period fits evaluated on the held-out test days.
 
-Run once, only after explicit approval:  .venv/bin/python scripts/final_test_run.py --final
-Refuses to run if reports/phase4_test.md exists. Output is committed whatever it shows.
+Run once, only after explicit approval:  ofi final-test --final
+Refuses to run if reports/phase4_test.md exists (it does: the test split has been used). Output is committed
+whatever it shows.
 """
 import argparse
 import json
-import sys
-from pathlib import Path
 
 import pandas as pd
 
-from build_predict_frames import SYMBOLS, build_frame, frame_path
+from ofi.config import FINAL_TEST_REPORT as OUT
+from ofi.config import MODELS_PATH, SYMBOLS, TEST
 from ofi.io import unlock_test_dates
 from ofi.ledger import log_run
-from run_phase4 import MAIN_L, evaluate, fmt
-
-ROOT = Path(__file__).resolve().parents[1]
-TEST = ["2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"]
-OUT = ROOT / "reports" / "phase4_test.md"
+from ofi.pipeline.frames import build_frame, frame_path
+from ofi.pipeline.phase4 import MAIN_L, evaluate, fmt
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
+def add_arguments(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--final", action="store_true", help="confirm this is the single final test run")
-    if not ap.parse_args().final:
-        sys.exit("Refusing: pass --final to run the one-shot test (see RULES.md).")
+
+
+def run(args: argparse.Namespace) -> None:
+    if not args.final:
+        raise SystemExit("Refusing: pass --final to run the one-shot test (see CONTRIBUTING.md, research rules).")
     if OUT.exists():
-        sys.exit(f"Refusing: {OUT} exists; the test split has already been used.")
-    frozen = json.loads((ROOT / "research" / "phase4_models.json").read_text())
+        raise SystemExit(f"Refusing: {OUT} exists; the test split has already been used.")
+    frozen = json.loads(MODELS_PATH.read_text())
 
     md = ["# Phase 4 — FINAL TEST (H5/H6), held-out days " + f"{TEST[0]} → {TEST[-1]}", "",
           f"Frozen fits from train days only ({frozen['fit_on'][0]} → {frozen['fit_on'][-1]}). "
@@ -50,7 +49,3 @@ def main() -> None:
             md += [f"## {sym} — H5 {verdict}", "", fmt(res), ""]
     OUT.write_text("\n".join(md))
     print("\n".join(md))
-
-
-if __name__ == "__main__":
-    main()
