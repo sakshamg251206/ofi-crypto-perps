@@ -91,3 +91,13 @@ Operational details of the HYPOTHESES.md rule, fixed before any 2023-08-01 data 
 The first selection run picked WLDUSDT, but `infer_tick` had a bug. For very low-priced coins, price / t rounds to 0 for any large t, so every price looked "on grid". 1000PEPEUSDT (~$0.0013) got tick = 50,000, its spread > 1 tick share came out as 0, and it could not compete. Fix: tick candidates must be ≤ the smallest price (regression test added). The rule itself is unchanged and mechanical, so the selection is simply re-run with the fixed code, and whatever it picks stands, even if it is not WLDUSDT. Disclosure: the WLDUSDT outcome of the buggy run was seen before the re-run. BTC (0.1) and ETH (0.01) ticks are unaffected.
 
 Also: `download_day` now retries dropped connections (a connection reset killed one build); HTTP errors such as 404 still propagate.
+
+## 2026-10-01 — H5 timing interpretation (approved; written before any Phase 4 code)
+
+HYPOTHESES.md (frozen) words H5 as "OFI_k predicts ΔMid over [t_k+100ms, t_{k+1}+100ms]". Under this codebase's bucket convention (bucket k = [t_k, t_{k+1})), the literal reading would make the target overlap the OFI interval. That is look-ahead, and it would just re-measure the contemporaneous H1 effect. The only non-leaky reading, used from here on:
+
+- x_k = OFI over [t_{k−1}, t_k), i.e. known at t_k.
+- y_k = mid(t_{k+1} + L) − mid(t_k + L), where L is the latency (main L = 100 ms; also 0 and 500 ms).
+- All times on the local receive clock (`local_timestamp`). mid(t) = the last book state received at or before t.
+
+A property test must show the target interval never overlaps the OFI interval, for every L. HYPOTHESES.md itself is not edited.
