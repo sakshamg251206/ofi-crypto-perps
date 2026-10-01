@@ -16,7 +16,7 @@ class QualityAccumulator:
         self.tick = tick
         self.prev = None  # last row of the previous chunk
         self.hi_ts = None  # max timestamp seen so far
-        self.rows = self.nan_rows = self.dups = self.backwards = self.crossed = self.off_grid = 0
+        self.rows = self.nan_rows = self.dups = self.backwards = self.crossed = self.off_grid = self.local_back = 0
         self.max_gap = 0
         self.prices, self.spreads, self.delays = [], [], []
         self.per_hour = np.zeros(24, dtype=np.int64)
@@ -31,6 +31,7 @@ class QualityAccumulator:
         self.dups += int(same_as_prev.sum())
         tsf = full["timestamp"].to_numpy()
         self.backwards += int((np.diff(tsf) < 0).sum())
+        self.local_back += int((np.diff(full["local_timestamp"].to_numpy()) < 0).sum())
 
         # Gaps above the max timestamp seen so far are exact; below it, earlier
         # chunks may already cover the time (only possible with out-of-order rows).
@@ -64,6 +65,7 @@ class QualityAccumulator:
             "rows_with_nan": self.nan_rows,
             "duplicate_rows": self.dups,
             "ts_backwards": self.backwards,
+            "local_ts_backwards": self.local_back,
             "crossed_or_locked": self.crossed,
             "off_grid_rows": self.off_grid,
             "inferred_tick": round(float(np.diff(prices).min()), 10) if len(prices) > 1 else float("nan"),

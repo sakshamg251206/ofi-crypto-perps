@@ -34,8 +34,8 @@ def tap(chunks, fn):
         yield c
 
 
-def day_buckets(symbol: str, date: str):
-    """1 s buckets + quality report for one day; tick inferred from the day's first chunk."""
+def day_buckets(symbol: str, date: str, freq_s: float = 1, clock: str = "timestamp"):
+    """Buckets + quality report for one day; tick inferred from the day's first chunk."""
     download_day(DATASET, symbol, date)
     day0 = int(dt.datetime.fromisoformat(date).replace(tzinfo=dt.UTC).timestamp()) * 1_000_000
     assert day0 % DAY_US == 0
@@ -44,7 +44,8 @@ def day_buckets(symbol: str, date: str):
     first = next(reader)
     tick = infer_tick(np.r_[first["bid_price"].dropna(), first["ask_price"].dropna()])
     acc = QualityAccumulator(tick)
-    b = bucketize_chunks(tap(itertools.chain([first], reader), acc.update), freq_s=1, tick=tick, day0=day0)
+    b = bucketize_chunks(tap(itertools.chain([first], reader), acc.update), freq_s=freq_s, tick=tick, day0=day0,
+                         clock=clock)
     q = acc.report() | {"tick": tick}
     if q["off_grid_rows"] > 1e-4 * q["rows"]:  # a few real off-tick orders exist (DECISIONS.md)
         raise ValueError(f"{symbol} {date}: {q['off_grid_rows']} rows off the {tick} tick grid")

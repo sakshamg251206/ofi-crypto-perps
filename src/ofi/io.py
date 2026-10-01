@@ -1,4 +1,5 @@
 """Download and load Tardis top-of-book files, with a hard guard on test-split dates."""
+import contextlib
 import datetime as dt
 import shutil
 import time
@@ -22,8 +23,22 @@ class HeldOutDateError(RuntimeError):
     """Raised when code tries to touch a test-split date before Phase 4's final run."""
 
 
+_test_unlocked = False
+
+
+@contextlib.contextmanager
+def unlock_test_dates():
+    """Only for scripts/final_test_run.py: allow test-split dates inside this block."""
+    global _test_unlocked
+    _test_unlocked = True
+    try:
+        yield
+    finally:
+        _test_unlocked = False
+
+
 def assert_not_test_date(date: str) -> None:
-    if TEST_START <= dt.date.fromisoformat(date) <= TEST_END:
+    if not _test_unlocked and TEST_START <= dt.date.fromisoformat(date) <= TEST_END:
         raise HeldOutDateError(f"{date} is in the held-out test split; not loadable before Phase 4.")
 
 
@@ -74,5 +89,5 @@ def load_top_of_book(dataset: str, symbol: str, date: str, data_dir: Path = DATA
 
 def load_trades(symbol: str, date: str, data_dir: Path = DATA_DIR) -> pd.DataFrame:
     assert_not_test_date(date)
-    return pd.read_csv(raw_path("trades", symbol, date, data_dir), usecols=["timestamp", "side", "amount"],
-                       dtype={"timestamp": "int64", "side": "category", "amount": "float64"})
+    return pd.read_csv(raw_path("trades", symbol, date, data_dir), usecols=["timestamp", "local_timestamp", "side", "amount"],
+                       dtype={"timestamp": "int64", "local_timestamp": "int64", "side": "category", "amount": "float64"})

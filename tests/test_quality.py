@@ -98,3 +98,9 @@ def test_infer_tick_tiny_prices_not_fooled_by_rounding_to_zero():
     # 1000PEPEUSDT-like prices: ~0.0013 with tick 1e-7; any huge t makes price/t round to 0.
     prices = np.array([0.0013012, 0.0013013, 0.0013015, 0.0012999])
     assert infer_tick(prices) == pytest.approx(1e-7)
+
+
+def test_local_timestamp_backwards_counted():
+    df = toy()
+    df.loc[3, "local_timestamp"] = df.loc[2, "local_timestamp"] - 1
+    assert quality_report(df, tick=0.1)["local_ts_backwards"] >= 1

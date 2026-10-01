@@ -95,3 +95,13 @@ def test_download_retries_after_connection_reset(tmp_path, monkeypatch):
     monkeypatch.setattr(oio.urllib.request, "urlopen", flaky)
     monkeypatch.setattr(oio.time, "sleep", lambda s: None)
     assert download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path).read_bytes() == b"0123456789"
+
+
+def test_test_dates_can_be_unlocked_only_explicitly():
+    import ofi.io as oio
+    with pytest.raises(HeldOutDateError):
+        assert_not_test_date("2026-05-01")
+    with oio.unlock_test_dates():
+        assert_not_test_date("2026-05-01")
+    with pytest.raises(HeldOutDateError):
+        assert_not_test_date("2026-05-01")

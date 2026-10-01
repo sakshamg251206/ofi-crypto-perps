@@ -130,3 +130,39 @@ def test_resample_sums_trade_imbalance_when_present():
     b = bucketize(random_book(), freq_s=1, tick=TICK)
     b["ti"] = 1.0
     assert (resample_buckets(b, freq_s=10)["ti"] == 10.0).all()
+
+
+# ---- Phase 4: receive clock, 100 ms buckets, mid level, funding overlap ----
+from ofi.ofi import overlaps_funding
+
+
+def test_100ms_buckets_and_mid_level():
+    rows = [(-0.001, 100.0, 5, 100.1, 3), (0.05, 100.0, 8, 100.1, 3), (0.25, 100.1, 8, 100.2, 3)]
+    b = bucketize(book(rows), freq_s=0.1, tick=TICK)
+    assert len(b) == 864_000
+    assert b.loc[DAY0, "ofi"] == pytest.approx(3.0)
+    assert b.loc[DAY0, "mid"] == pytest.approx(100.05)
+    assert b.loc[DAY0 + 200_000, "mid"] == pytest.approx(100.15)   # bucket [0.2, 0.3) s
+    assert b.loc[DAY0 + 100_000, "mid"] == pytest.approx(100.05)   # empty bucket carries state
+
+
+def test_bucketize_on_local_clock_uses_receive_time():
+    df = book([(-0.001, 100.0, 5, 100.1, 3), (9.999, 100.0, 8, 100.1, 3)])
+    df["local_timestamp"] = df["timestamp"] + 5_000  # received 5 ms later -> lands in next 10 s bucket
+    b = bucketize(df, freq_s=10, tick=TICK, clock="local_timestamp")
+    assert b.loc[DAY0, "ofi"] == 0
+    assert b.loc[DAY0 + 10 * S, "ofi"] == pytest.approx(3.0)
+
+
+def test_overlaps_funding_for_arbitrary_spans():
+    t = lambda h, m, s=0: DAY0 + (h * 3600 + m * 60 + s) * S
+    starts = np.array([t(7, 57, 0), t(7, 57, 0), t(12, 0), t(23, 57, 50)])
+    ends = np.array([t(7, 58, 0), t(7, 58, 1), t(12, 1), t(23, 58, 0)])
+    assert overlaps_funding(starts, ends).tolist() == [False, True, False, False]
+
+
+def test_trade_imbalance_100ms_on_local_clock():
+    trades = pd.DataFrame({"timestamp": [DAY0 + 50_000], "local_timestamp": [DAY0 + 120_000],
+                           "side": ["buy"], "amount": [2.0]})
+    ti = trade_imbalance(trades, day0=DAY0, freq_s=0.1, clock="local_timestamp")
+    assert len(ti) == 864_000 and ti.loc[DAY0 + 100_000] == pytest.approx(2.0) and ti.loc[DAY0] == 0

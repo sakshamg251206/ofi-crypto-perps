@@ -51,9 +51,9 @@ def _chunk_aggregates(chunk, prev_row, day0, f, n_buckets, clock):
     return agg, seed
 
 
-def bucketize_chunks(chunks, freq_s: int, tick: float, day0: int, clock: str = "timestamp") -> pd.DataFrame:
+def bucketize_chunks(chunks, freq_s: float, tick: float, day0: int, clock: str = "timestamp") -> pd.DataFrame:
     """Bucketize one UTC day streamed as consecutive row chunks (see `bucketize`)."""
-    f = freq_s * US
+    f = int(round(freq_s * US))
     n_buckets = DAY_US // f
     aggs, seed, prev_row = [], None, None
     for chunk in chunks:
@@ -76,12 +76,13 @@ def bucketize_chunks(chunks, freq_s: int, tick: float, day0: int, clock: str = "
             "depth": agg["depth"].fillna({0: seed_depth}).ffill().to_numpy(),
             "spread_ticks": np.round(agg["spread"].fillna({0: seed_spread}).ffill().to_numpy() / tick, 9),
             "n_events": agg["n_events"].fillna(0).astype("int64").to_numpy(),
+            "mid": mid_end.to_numpy(),
         },
         index=pd.Index(day0 + np.arange(n_buckets) * f, name="t"),
     )
 
 
-def bucketize(book: pd.DataFrame, freq_s: int, tick: float, clock: str = "timestamp") -> pd.DataFrame:
+def bucketize(book: pd.DataFrame, freq_s: float, tick: float, clock: str = "timestamp") -> pd.DataFrame:
     """Aggregate one UTC day of top-of-book updates into fixed buckets [t, t + freq).
 
     Returns one row per bucket over the whole day (index `t` = bucket start, µs):
@@ -90,6 +91,7 @@ def bucketize(book: pd.DataFrame, freq_s: int, tick: float, clock: str = "timest
       depth        (bid size + ask size) / 2 of the book state at bucket end
       spread_ticks ask - bid of the book state at bucket end, in ticks
       n_events     number of updates in the bucket
+      mid          mid of the book state at bucket end (price units; last update with clock < bucket end)
     Rows before the day (e.g. the file's pre-midnight row) only seed the
     starting state; their e_n are not counted.
     """
@@ -103,16 +105,17 @@ def resample_buckets(buckets: pd.DataFrame, freq_s: int) -> pd.DataFrame:
     Note: a NaN ΔMid (no starting state) is treated as 0 in the sum.
     """
     f = freq_s * US
-    how = {"ofi": "sum", "dmid_ticks": "sum", "depth": "last", "spread_ticks": "last", "n_events": "sum", "ti": "sum"}
+    how = {"ofi": "sum", "dmid_ticks": "sum", "depth": "last", "spread_ticks": "last", "n_events": "sum", "ti": "sum",
+           "mid": "last"}
     out = buckets.groupby(buckets.index.to_numpy() // f * f).agg({c: how[c] for c in buckets.columns})
     out["dmid_ticks"] = out["dmid_ticks"].round(9)
     out.index.name = "t"
     return out
 
 
-def trade_imbalance(trades: pd.DataFrame, day0: int, freq_s: int, clock: str = "timestamp") -> pd.Series:
+def trade_imbalance(trades: pd.DataFrame, day0: int, freq_s: float, clock: str = "timestamp") -> pd.Series:
     """TI_k = sum of signed trade size per bucket (+ taker buy, - taker sell); trades outside the day ignored."""
-    f = freq_s * US
+    f = int(round(freq_s * US))
     n_buckets = DAY_US // f
     k = (trades[clock].to_numpy() - day0) // f
     side = trades["side"].to_numpy()
@@ -122,9 +125,18 @@ def trade_imbalance(trades: pd.DataFrame, day0: int, freq_s: int, clock: str = "
     return pd.Series(ti, index=pd.Index(day0 + np.arange(n_buckets) * f, name="t"), name="ti")
 
 
+def overlaps_funding(start_us: np.ndarray, end_us: np.ndarray, minutes: int = 2) -> np.ndarray:
+    """True where span [start, end) overlaps [F - minutes, F + minutes) for a funding time F (00/08/16 UTC).
+
+    Assumes spans shorter than 8 h - 2*minutes, so only the previous and next funding times matter.
+    """
+    w = minutes * 60 * US
+    s = np.asarray(start_us) % FUNDING_PERIOD_US
+    e = s + (np.asarray(end_us) - np.asarray(start_us))
+    return (s < w) | (e > FUNDING_PERIOD_US - w)
+
+
 def drop_funding(buckets: pd.DataFrame, freq_s: int, minutes: int = 2) -> pd.DataFrame:
     """Drop buckets overlapping ±`minutes` around a funding time (00/08/16 UTC)."""
-    f, w = freq_s * US, minutes * 60 * US
-    since_funding = buckets.index.to_numpy() % FUNDING_PERIOD_US
-    keep = (since_funding >= w) & (since_funding + f <= FUNDING_PERIOD_US - w)
-    return buckets[keep]
+    t = buckets.index.to_numpy()
+    return buckets[~overlaps_funding(t, t + int(round(freq_s * US)), minutes)]
