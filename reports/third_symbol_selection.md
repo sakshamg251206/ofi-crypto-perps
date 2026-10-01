@@ -10,6 +10,7 @@ Rule: HYPOTHESES.md; operational details: DECISIONS.md (2026-10-01).
 | COTIUSDT | 252.9 | 1e-05 | 0.02955 | 4 | 1414599 | True |
 | MKRUSDT | 594.4 | 0.1 | 0.02547 | 17 | 2382006 | True |
 | TOMOUSDT | 243.5 | 0.0001 | 0.0238 | 14 | 2257315 | True |
+| 1000PEPEUSDT | 286.1 | 1e-07 | 0.009421 | 13 | 2420528 | True |
 | XLMUSDT | 251.2 | 1e-05 | 0.006562 | 7 | 1374341 | True |
 | OPUSDT | 554.9 | 0.0001 | 0.006273 | 20 | 2791643 | True |
 | SOLUSDT | 707.2 | 0.001 | 0.005127 | 14 | 2723960 | True |
@@ -25,4 +26,3 @@ Rule: HYPOTHESES.md; operational details: DECISIONS.md (2026-10-01).
 | XRPUSDT | 1018 | 0.0001 | 0.001262 | 27 | 3704072 | True |
 | ADAUSDT | 193 | 0.0001 | 0.0005093 | 16 | 1957919 | True |
 | CRVUSDT | 1740 | 0.001 | 0.0002199 | 20 | 3816158 | True |
-| 1000PEPEUSDT | 286.1 | 5e+04 | 0 | 13 | 2420528 | True |
