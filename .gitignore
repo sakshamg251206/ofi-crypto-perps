@@ -1,8 +1,27 @@
+# Data (raw vendor files are never committed; see CONTRIBUTING.md)
 data/
 *.csv.gz
 *.parquet
+*.part
+
+# Python
 .venv/
+venv/
 __pycache__/
-.remember/
-.DS_Store
+*.py[cod]
 *.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local configuration
+.env
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+.remember/
