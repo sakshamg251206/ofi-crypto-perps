@@ -5,7 +5,7 @@
 - [x] **Phase 2:** all BTC days, H1–H4.
 - [x] **Phase 3:** ETH + selected third symbol.
 - [x] **Phase 4:** H5/H6 (only after H1–H4 are written up).
-- [ ] **Phase 5:** memo + README.
+- [x] **Phase 5:** memo + README.
 
 ## Log
 - 2026-09-30 — Research design v1 frozen (HYPOTHESES.md). Data source verified: Tardis `quotes` is L2-derived and ~25 ms batched; main dataset `book_ticker`, `quotes` as robustness (see DECISIONS.md).
@@ -14,3 +14,4 @@
 - 2026-10-01 — Phase 3 done (reports/phase3_ETHUSDT.md, reports/phase3_WLDUSDT.md, reports/third_symbol_selection.md). Third symbol WLDUSDT (selected on 2023-08-01; re-run after an infer_tick bug gave the same pick). No missing days. ETHUSDT: H1–H4 all PASS (median R² 0.69; λ̂ 1.13 [0.95, 1.29]). WLDUSDT: H1 PASS (R² 0.73), H2 FAIL (ΔR² 0.045 [0.022, 0.071]), H3 PASS (λ̂ 1.08 [0.87, 1.34]), H4 PASS. Exploratory: in WLD, median R² falls from 0.84 to 0.51 as the share of time with spread > 1 tick rises from 0 to 32% (Spearman −0.62); supports the tick-constraint explanation, but is confounded with depth/activity and was not pre-registered.
 - 2026-10-01 — Phase 4 validation done (reports/phase4_<SYM>.md; no verdicts). Receive clock, fits on 24 train days. Main (ofi, L=100ms) validation OOS R²: BTC 0.0003 [−0.0013, 0.0035], ETH −0.0001 [−0.0007, 0.0009], WLD −0.0046 [−0.0088, −0.0028]. Walk-forward pooled R²: 0.0016 / 0.0002 / −0.0001. Sign strategy break-even ≈ 0.09–0.12 bps per side vs ≥ 5 bps taker fee. Final one-shot test run pending explicit approval.
 - 2026-10-01 — Phase 4 FINAL TEST done (reports/phase4_test.md; one-shot, frozen train fits; attempt 1 crashed before evaluation, see DECISIONS.md). H5 FAIL on all three: test OOS R² (ofi, L=100ms) BTC −0.0008 [−0.0023, 0.0008], ETH −0.0060 [−0.0114, −0.0016], WLD −0.069 [−0.32, −0.027]. No secondary/baseline model has OOS R² > 0. WLD failure is a scale shift: test-period depth 32× train (price $1.92 → $0.33), so the raw-OFI slope over-predicts; depth-normalised OFI gives R² ≈ 0. H6 (as prior): sign-strategy gross edge 0.07–0.14 bps per side break-even vs ≥ 5 bps taker fee (+ half spread up to 1.6 bps for WLD); net strongly negative.
+- 2026-10-01 — Phase 5 done: research/memo.md (abstract, H1–H6, robustness, exploratory, limitations, next steps; Figure 4 explain-vs-predict) and README.md.

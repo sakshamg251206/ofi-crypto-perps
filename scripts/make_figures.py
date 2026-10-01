@@ -105,6 +105,40 @@ def fig3_beta_vs_depth(lam_ci: dict[str, tuple[float, float]]) -> None:
     fig.savefig(OUT / "fig3_beta_vs_depth.png")
 
 
+def fig4_explain_vs_predict() -> dict:
+    """Same test days, same receive clock: OFI vs ΔMid of the same interval vs out-of-sample R² for the next one."""
+    import json
+    from build_predict_frames import frame_path
+    from final_test_run import TEST
+    from ofi.predict import oos_r2
+    frozen = json.loads((ROOT / "research" / "phase4_models.json").read_text())["models"]
+    vals = {}
+    for sym in SYMBOLS:
+        df = pd.concat([pd.read_parquet(frame_path(sym, d)) for d in TEST])
+        same = np.corrcoef(df["x"], df["ar_lag"])[0, 1] ** 2
+        a, b = frozen[sym]["ofi_L100"]
+        nxt = oos_r2(df["y_100"].to_numpy(), a + b * df["x"].to_numpy())
+        vals[sym] = (same, nxt)
+    fig, ax = plt.subplots(figsize=(6, 3.4))
+    x = np.arange(len(vals))
+    w = 0.36
+    same_c, next_c = "#2a78d6", "#eb6834"
+    for i, (sym, (same, nxt)) in enumerate(vals.items()):
+        ax.bar(i - w / 2 - 0.01, same, w, color=same_c, label="Same interval (explains)" if i == 0 else None)
+        ax.bar(i + w / 2 + 0.01, nxt, w, color=next_c, label="Next interval, out of sample (predicts)" if i == 0 else None)
+        ax.text(i - w / 2 - 0.01, same + 0.02, f"{same:.2f}", ha="center", color=INK, fontsize=8)
+        ax.text(i + w / 2 + 0.01, max(nxt, 0) + 0.02, f"{nxt:.3f}", ha="center", color=INK, fontsize=8)
+    ax.axhline(0, color=MUTED, linewidth=0.8)
+    ax.set_xticks(x, list(vals))
+    ax.set_ylim(-0.1, 0.8)
+    ax.set_ylabel("R² of ΔMid on OFI (10 s)")
+    ax.set_title("Held-out test days, receive clock, 100 ms latency", loc="left")
+    ax.legend(loc="upper right", frameon=False, fontsize=8)
+    ax.grid(axis="x", visible=False)
+    fig.savefig(OUT / "fig4_explain_vs_predict.png")
+    return vals
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     # λ CIs come from the committed reports (10,000-draw bootstrap), not recomputed here.
@@ -112,6 +146,7 @@ def main() -> None:
     fig1_example_window()
     fig2_r2_over_time()
     fig3_beta_vs_depth(lam_ci)
+    print("fig4 values (same-interval R², next-interval OOS R²):", fig4_explain_vs_predict())
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
 
 

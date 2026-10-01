@@ -93,3 +93,6 @@ run_utc,git_sha,phase,symbol,dates,dataset,bucket,window,variant,metric,value,no
 2026-10-01T09:17:25+00:00,ebaf7ae,4-FINAL,WLDUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,oos_r2,-0.069117,H5=FAIL
 2026-10-01T09:17:25+00:00,ebaf7ae,4-FINAL,WLDUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,break_even_bps,0.140658,H5=FAIL
 2026-10-01T09:17:25+00:00,ebaf7ae,4-FINAL,WLDUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,net_bps_per_day,-53081.724518,H5=FAIL
+2026-10-01T09:26:48+00:00,793e6e2,5,BTCUSDT,2026-04-01..2026-09-01 (test),book_ticker,10s,pooled,descriptive fig4: same-interval R2 on receive clock,pooled_r2_same_interval,0.5707,"descriptive only, after final test; no hypothesis"
+2026-10-01T09:26:48+00:00,793e6e2,5,ETHUSDT,2026-04-01..2026-09-01 (test),book_ticker,10s,pooled,descriptive fig4: same-interval R2 on receive clock,pooled_r2_same_interval,0.5563,"descriptive only, after final test; no hypothesis"
+2026-10-01T09:26:48+00:00,793e6e2,5,WLDUSDT,2026-04-01..2026-09-01 (test),book_ticker,10s,pooled,descriptive fig4: same-interval R2 on receive clock,pooled_r2_same_interval,0.3634,"descriptive only, after final test; no hypothesis"
