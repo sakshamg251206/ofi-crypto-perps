@@ -72,3 +72,15 @@ run_utc,git_sha,phase,symbol,dates,dataset,bucket,window,variant,metric,value,no
 2026-10-01T08:24:26+00:00,3ce1d09,3,WLDUSDT,2023-09-01..2026-03-01 (31d),book_ticker,60s,120min,exploratory spread>1 robust 60s/2h,spearman_r2_vs_spread_gt1,-0.668017,"exploratory, not pre-registered"
 2026-10-01T08:32:17+00:00,e3422dd,3,WLDUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,exploratory: day-level R2 vs relative tick size,spearman_dayR2_vs_tick_bps,0.748,"exploratory, not pre-registered; n=31 days"
 2026-10-01T08:32:17+00:00,e3422dd,3,WLDUSDT,2023-09-01..2026-03-01 (31d),book_ticker,10s,30min,exploratory: day-level R2 vs relative tick size,spearman_dayR2_vs_spread_gt1,-0.804,"exploratory, not pre-registered; n=31 days"
+2026-10-01T09:03:53+00:00,fc569c5,4,BTCUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,oos_r2,0.000332,validation only; no verdict
+2026-10-01T09:03:53+00:00,fc569c5,4,BTCUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,break_even_bps,0.118128,validation only; no verdict
+2026-10-01T09:03:53+00:00,fc569c5,4,BTCUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,net_bps_per_day,-37977.570227,validation only; no verdict
+2026-10-01T09:03:53+00:00,fc569c5,4,BTCUSDT,walk-forward 2024-09-01..2026-03-01,book_ticker,10s,n/a,H5 walk-forward ofi L=100ms,pooled_oos_r2,0.001647,robustness; non-test days only
+2026-10-01T09:04:11+00:00,fc569c5,4,ETHUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,oos_r2,-5.4e-05,validation only; no verdict
+2026-10-01T09:04:11+00:00,fc569c5,4,ETHUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,break_even_bps,0.113548,validation only; no verdict
+2026-10-01T09:04:11+00:00,fc569c5,4,ETHUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,net_bps_per_day,-38271.084456,validation only; no verdict
+2026-10-01T09:04:11+00:00,fc569c5,4,ETHUSDT,walk-forward 2024-09-01..2026-03-01,book_ticker,10s,n/a,H5 walk-forward ofi L=100ms,pooled_oos_r2,0.000238,robustness; non-test days only
+2026-10-01T09:04:31+00:00,fc569c5,4,WLDUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,oos_r2,-0.004561,validation only; no verdict
+2026-10-01T09:04:31+00:00,fc569c5,4,WLDUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,break_even_bps,0.087073,validation only; no verdict
+2026-10-01T09:04:31+00:00,fc569c5,4,WLDUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,net_bps_per_day,-45262.946182,validation only; no verdict
+2026-10-01T09:04:31+00:00,fc569c5,4,WLDUSDT,walk-forward 2024-09-01..2026-03-01,book_ticker,10s,n/a,H5 walk-forward ofi L=100ms,pooled_oos_r2,-5.9e-05,robustness; non-test days only
