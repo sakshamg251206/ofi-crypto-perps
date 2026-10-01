@@ -84,3 +84,12 @@ run_utc,git_sha,phase,symbol,dates,dataset,bucket,window,variant,metric,value,no
 2026-10-01T09:04:31+00:00,fc569c5,4,WLDUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,break_even_bps,0.087073,validation only; no verdict
 2026-10-01T09:04:31+00:00,fc569c5,4,WLDUSDT,train 2023-09-01..2025-08-01; valid 2025-09-01..2026-03-01,book_ticker,10s,n/a,H5/H6 validation ofi L=100ms,net_bps_per_day,-45262.946182,validation only; no verdict
 2026-10-01T09:04:31+00:00,fc569c5,4,WLDUSDT,walk-forward 2024-09-01..2026-03-01,book_ticker,10s,n/a,H5 walk-forward ofi L=100ms,pooled_oos_r2,-5.9e-05,robustness; non-test days only
+2026-10-01T09:11:21+00:00,ebaf7ae,4-FINAL,BTCUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,oos_r2,-0.000823,H5=FAIL
+2026-10-01T09:11:21+00:00,ebaf7ae,4-FINAL,BTCUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,break_even_bps,0.109024,H5=FAIL
+2026-10-01T09:11:21+00:00,ebaf7ae,4-FINAL,BTCUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,net_bps_per_day,-38694.128519,H5=FAIL
+2026-10-01T09:16:01+00:00,ebaf7ae,4-FINAL,ETHUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,oos_r2,-0.005954,H5=FAIL
+2026-10-01T09:16:02+00:00,ebaf7ae,4-FINAL,ETHUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,break_even_bps,0.072036,H5=FAIL
+2026-10-01T09:16:02+00:00,ebaf7ae,4-FINAL,ETHUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,net_bps_per_day,-38601.212913,H5=FAIL
+2026-10-01T09:17:25+00:00,ebaf7ae,4-FINAL,WLDUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,oos_r2,-0.069117,H5=FAIL
+2026-10-01T09:17:25+00:00,ebaf7ae,4-FINAL,WLDUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,break_even_bps,0.140658,H5=FAIL
+2026-10-01T09:17:25+00:00,ebaf7ae,4-FINAL,WLDUSDT,2026-04-01..2026-09-01,book_ticker,10s,n/a,FINAL TEST ofi L=100ms,net_bps_per_day,-53081.724518,H5=FAIL
