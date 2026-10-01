@@ -83,3 +83,20 @@ def quality_report(book: pd.DataFrame, tick: float) -> dict:
     acc = QualityAccumulator(tick)
     acc.update(book)
     return acc.report()
+
+
+def infer_tick(prices: np.ndarray, min_on_grid: float = 0.9999) -> float:
+    """Largest t in {1, 2, 5} x 10^k with >= `min_on_grid` of prices on the t grid.
+
+    Tolerates rare off-grid prices (real off-tick orders exist, see DECISIONS.md).
+    """
+    prices = np.asarray(prices, float)
+    for k in range(4, -9, -1):
+        for m in (5, 2, 1):
+            t = m * 10.0 ** k
+            if t > prices.min():  # else price / t rounds to 0 and every price looks "on grid"
+                continue
+            x = prices / t
+            if np.mean(np.abs(x - np.round(x)) < 1e-6) >= min_on_grid:
+                return round(t, 12)
+    raise ValueError("no tick found")

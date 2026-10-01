@@ -85,3 +85,9 @@ Operational details of the HYPOTHESES.md rule, fixed before any 2023-08-01 data 
 - **Pick:** highest spread > 1 tick share among those passing the activity filter; ties go to higher volume.
 - 2023-08-01 is outside the sample and outside the test split, so choosing on it involves no peeking.
 - If the chosen symbol is missing on any sample day (e.g. delisted), those days are reported as missing and not replaced. The choice is fixed ex ante, which avoids survivorship bias.
+
+## 2026-10-01 — Third-symbol selection re-run after a tick-inference bug
+
+The first selection run picked WLDUSDT, but `infer_tick` had a bug. For very low-priced coins, price / t rounds to 0 for any large t, so every price looked "on grid". 1000PEPEUSDT (~$0.0013) got tick = 50,000, its spread > 1 tick share came out as 0, and it could not compete. Fix: tick candidates must be ≤ the smallest price (regression test added). The rule itself is unchanged and mechanical, so the selection is simply re-run with the fixed code, and whatever it picks stands, even if it is not WLDUSDT. Disclosure: the WLDUSDT outcome of the buggy run was seen before the re-run. BTC (0.1) and ETH (0.01) ticks are unaffected.
+
+Also: `download_day` now retries dropped connections (a connection reset killed one build); HTTP errors such as 404 still propagate.

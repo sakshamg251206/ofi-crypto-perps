@@ -73,3 +73,28 @@ def test_off_grid_rows_counted():
     df.loc[2, "ask_price"] = 100.33  # not a multiple of the 0.1 tick
     assert quality_report(df, tick=0.1)["off_grid_rows"] == 1
     assert quality_report(toy(), tick=0.1)["off_grid_rows"] == 0
+
+
+from ofi.quality import infer_tick
+
+
+@pytest.mark.parametrize("prices, tick", [
+    ([100.0, 100.1, 100.3, 99.9], 0.1),
+    ([2466.03, 2466.04, 2466.1], 0.01),
+    ([0.25015, 0.25020, 0.25025], 0.00005),
+    ([105.0, 110.0, 125.0], 5.0),
+    ([1.0, 2.0, 4.0], 1.0),
+])
+def test_infer_tick(prices, tick):
+    assert infer_tick(np.array(prices)) == pytest.approx(tick)
+
+
+def test_infer_tick_ignores_rare_off_grid_prices():
+    prices = np.r_[np.arange(10_000) * 0.1 + 30_000, 34_417.43]  # 1 off-grid in 10,001
+    assert infer_tick(prices) == pytest.approx(0.1)
+
+
+def test_infer_tick_tiny_prices_not_fooled_by_rounding_to_zero():
+    # 1000PEPEUSDT-like prices: ~0.0013 with tick 1e-7; any huge t makes price/t round to 0.
+    prices = np.array([0.0013012, 0.0013013, 0.0013015, 0.0012999])
+    assert infer_tick(prices) == pytest.approx(1e-7)

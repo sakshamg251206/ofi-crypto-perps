@@ -1,8 +1,8 @@
-"""Phase 2: H1–H4 on all non-test BTCUSDT days, per the spec in DECISIONS.md (2026-09-30).
+"""H1–H4 on all non-test days of one symbol, per the Phase 2 spec in DECISIONS.md (2026-09-30).
 
-Run: .venv/bin/python scripts/run_phase2.py [--boot N]
-Input: data/buckets/book_ticker/BTCUSDT/<date>_1s.parquet (scripts/build_buckets.py)
-Output: reports/phase2.md, research/phase2_windows_<spec>.csv, ledger rows.
+Run: .venv/bin/python scripts/run_phase2.py [--symbol BTCUSDT] [--phase 2] [--boot N]
+Input: data/buckets/book_ticker/<SYMBOL>/<date>_1s.parquet (scripts/build_buckets.py)
+Output: reports/phase<P>_<SYMBOL>.md, research/phase<P>_windows_<SYMBOL>_<freq>s.csv, ledger rows.
 """
 import argparse
 import datetime as dt
@@ -19,7 +19,6 @@ from ofi.regress import window_features, window_regressions
 from ofi.stats import block_bootstrap, fit_depth_nls, percentile_ci
 
 ROOT = Path(__file__).resolve().parents[1]
-SYMBOL = "BTCUSDT"
 SPECS = [("main 10s/30min", 10, 1800), ("robust 1s/30min", 1, 1800), ("robust 60s/2h", 60, 7200)]
 
 
@@ -94,8 +93,9 @@ def fmt_ci(ci) -> str:
     return f"[{ci[0]:.3f}, {ci[1]:.3f}]"
 
 
-def report(results: dict, per_day: pd.DataFrame, n_boot: int) -> str:
-    lines = ["# Phase 2 — H1–H4, BTCUSDT book_ticker, 31 days (2023-09 → 2026-03)", "",
+def report(results: dict, per_day: pd.DataFrame, n_boot: int, symbol: str, phase: int, missing: list[str]) -> str:
+    lines = [f"# Phase {phase} — H1–H4, {symbol} book_ticker, {len(per_day)} days (2023-09 → 2026-03)", "",
+             f"Missing days (reported, not replaced): {missing or 'none'}", "",
              f"Exchange timestamps. Funding ±2 min excluded. Day-block bootstrap, {n_boot:,} draws, seed 20260930.",
              "Verdicts use the main spec only (DECISIONS.md, Phase 2 spec). Robustness specs shown for comparison.", ""]
     lines += ["| | " + " | ".join(results) + " |", "|---|" + "---|" * len(results)]
@@ -135,21 +135,25 @@ def report(results: dict, per_day: pd.DataFrame, n_boot: int) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--boot", type=int, default=10_000)
-    n_boot = ap.parse_args().boot
+    ap.add_argument("--symbol", default="BTCUSDT")
+    ap.add_argument("--phase", type=int, default=2)
+    args = ap.parse_args()
+    n_boot, symbol, phase = args.boot, args.symbol, args.phase
 
-    days = {d: pd.read_parquet(bucket_path(d)) for d in DATES}
+    missing = [d for d in DATES if not bucket_path(d, symbol).exists()]
+    days = {d: pd.read_parquet(bucket_path(d, symbol)) for d in DATES if d not in missing}
     results, per_day = {}, None
     for name, freq_s, window_s in SPECS:
         W = pd.concat([windows_for_day(b1, d, freq_s, window_s) for d, b1 in days.items()]).dropna()
-        W.to_csv(ROOT / "research" / f"phase2_windows_{freq_s}s.csv")
+        W.to_csv(ROOT / "research" / f"phase{phase}_windows_{symbol}_{freq_s}s.csv")
         print(f"[{name}] {len(W)} windows, bootstrapping", flush=True)
         results[name] = analyse(W, n_boot)
         v = verdicts(results[name])
         for metric in ("frac_beta_pos", "r2_ofi_median", "h2_diff", "lam", "h4_diff"):
-            log_run(phase="2", symbol=SYMBOL, dates=f"{DATES[0]}..{DATES[-1]} ({len(DATES)}d)", dataset="book_ticker",
+            log_run(phase=str(phase), symbol=symbol, dates=f"{DATES[0]}..{DATES[-1]} ({len(days)}d)", dataset="book_ticker",
                     bucket=f"{freq_s}s", window=f"{window_s // 60}min", variant=f"H1-H4 {name}", metric=metric,
                     value=round(float(results[name][metric]), 6), notes=" ".join(f"{h}={x}" for h, x in v.items()))
-        log_run(phase="2", symbol=SYMBOL, dates=f"{DATES[0]}..{DATES[-1]} ({len(DATES)}d)", dataset="book_ticker",
+        log_run(phase=str(phase), symbol=symbol, dates=f"{DATES[0]}..{DATES[-1]} ({len(days)}d)", dataset="book_ticker",
                 bucket=f"{freq_s}s", window=f"{window_s // 60}min", variant=f"exploratory spread>1 {name}",
                 metric="spearman_r2_vs_spread_gt1", value=round(float(results[name]["expl_spearman"][0]), 6),
                 notes="exploratory, not pre-registered")
@@ -160,8 +164,8 @@ def main() -> None:
                                     "r2_ti": g["r2_ti"].median(), "depth": g["depth_mean"].median(),
                                     "gt1": g["frac_spread_gt1"].median()})
 
-    md = report(results, per_day, n_boot)
-    (ROOT / "reports" / "phase2.md").write_text(md)
+    md = report(results, per_day, n_boot, symbol, phase, missing)
+    (ROOT / "reports" / f"phase{phase}_{symbol}.md").write_text(md)
     print(md)
 
 

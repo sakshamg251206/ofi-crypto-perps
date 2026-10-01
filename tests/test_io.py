@@ -80,3 +80,18 @@ def test_download_retries_then_succeeds(tmp_path, monkeypatch):
     monkeypatch.setattr(oio.urllib.request, "urlopen", lambda url: next(calls))
     p = download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path)
     assert p.read_bytes() == b"0123456789"
+
+
+def test_download_retries_after_connection_reset(tmp_path, monkeypatch):
+    import ofi.io as oio
+    state = {"n": 0}
+
+    def flaky(url):
+        state["n"] += 1
+        if state["n"] == 1:
+            raise ConnectionResetError(54, "Connection reset")
+        return FakeResponse(b"0123456789", 10)
+
+    monkeypatch.setattr(oio.urllib.request, "urlopen", flaky)
+    monkeypatch.setattr(oio.time, "sleep", lambda s: None)
+    assert download_day("trades", "BTCUSDT", "2024-07-01", data_dir=tmp_path).read_bytes() == b"0123456789"

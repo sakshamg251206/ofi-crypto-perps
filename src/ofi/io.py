@@ -1,6 +1,8 @@
 """Download and load Tardis top-of-book files, with a hard guard on test-split dates."""
 import datetime as dt
 import shutil
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -10,7 +12,7 @@ TARDIS_URL = "https://datasets.tardis.dev/v1/binance-futures/{dataset}/{y}/{m}/{
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 # HYPOTHESES.md: test split 2026-04 .. 2026-09, untouched until Phase 4's final run.
 TEST_START, TEST_END = dt.date(2026, 4, 1), dt.date(2026, 9, 30)
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 4
 
 TOB_DTYPES = {"timestamp": "int64", "local_timestamp": "int64", "bid_price": "float64",
               "bid_amount": "float64", "ask_price": "float64", "ask_amount": "float64"}
@@ -39,10 +41,18 @@ def download_day(dataset: str, symbol: str, date: str, data_dir: Path = DATA_DIR
     url = TARDIS_URL.format(dataset=dataset, y=y, m=m, d=d, symbol=symbol)
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(".part")
+    got = declared = -1
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        with urllib.request.urlopen(url) as r, open(tmp, "wb") as out:
-            declared = int(r.headers.get("Content-Length", -1))
-            shutil.copyfileobj(r, out)
+        try:
+            with urllib.request.urlopen(url) as r, open(tmp, "wb") as out:
+                declared = int(r.headers.get("Content-Length", -1))
+                shutil.copyfileobj(r, out)
+        except urllib.error.HTTPError:
+            raise  # e.g. 404 = day not available; caller decides
+        except (ConnectionError, TimeoutError, urllib.error.URLError):
+            tmp.unlink(missing_ok=True)
+            time.sleep(2 ** attempt)
+            continue
         got = tmp.stat().st_size
         if declared < 0 or got == declared:  # the server can close early without an error
             tmp.rename(dest)  # atomic: never a truncated file under the real name
