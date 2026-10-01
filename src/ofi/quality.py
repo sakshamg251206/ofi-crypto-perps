@@ -90,7 +90,7 @@ def quality_report(book: pd.DataFrame, tick: float) -> dict:
 def infer_tick(prices: np.ndarray, min_on_grid: float = 0.9999) -> float:
     """Largest t in {1, 2, 5} x 10^k with >= `min_on_grid` of prices on the t grid.
 
-    Tolerates rare off-grid prices (real off-tick orders exist, see DECISIONS.md).
+    Tolerates rare off-grid prices (real off-tick orders exist, see docs/DECISIONS.md).
     """
     prices = np.asarray(prices, float)
     for k in range(4, -9, -1):

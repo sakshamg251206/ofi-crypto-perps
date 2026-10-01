@@ -1,6 +1,6 @@
 """H5/H6: predictive OFI on the receive clock, out-of-sample R², and a sign strategy net of costs.
 
-Timing (DECISIONS.md, 2026-10-01): x_k = OFI over [t_{k-1}, t_k); y_k = mid(t_{k+1}+L) - mid(t_k+L).
+Timing (docs/DECISIONS.md, 2026-10-01): x_k = OFI over [t_{k-1}, t_k); y_k = mid(t_{k+1}+L) - mid(t_k+L).
 """
 import numpy as np
 import pandas as pd

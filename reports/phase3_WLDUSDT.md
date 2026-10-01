@@ -30,7 +30,7 @@ blk_1 = -0.015, blk_2 = 0.042, blk_3 = -0.061, blk_4 = 0.014, blk_5 = 0.108, wee
 
 ## Per day (main spec)
 
-| day | events | windows | β>0 share | median R² | median R² TI | median depth (BTC) | spread>1 share |
+| day | events | windows | β>0 share | median R² | median R² TI | median depth (WLD) | spread>1 share |
 |---|---|---|---|---|---|---|---|
 | 2023-09-01 | 1,381,764 | 48 | 1.000 | 0.571 | 0.536 | 968.39 | 0.022 |
 | 2023-10-01 | 2,240,443 | 48 | 1.000 | 0.654 | 0.529 | 1354.47 | 0.006 |

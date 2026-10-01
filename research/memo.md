@@ -20,7 +20,7 @@ The mechanism matters for interpretation. If the spread is one tick, the mid can
 
 ## 2. Data
 
-- **Source:** Tardis.dev free files (1st of each month), Binance USDⓈ-M futures. Main dataset `book_ticker` (native bookTicker, every top-of-book change, 1.2M–61M rows per symbol-day). Tardis `quotes` was rejected as the main source because it is rebuilt from the ~25 ms batched depth stream and folds ~19 events into each row (DECISIONS.md). On one BTC day it gives nearly the same R² (0.79 vs 0.80). `trades` provides the trade-imbalance baseline.
+- **Source:** Tardis.dev free files (1st of each month), Binance USDⓈ-M futures. Main dataset `book_ticker` (native bookTicker, every top-of-book change, 1.2M–61M rows per symbol-day). Tardis `quotes` was rejected as the main source because it is rebuilt from the ~25 ms batched depth stream and folds ~19 events into each row ([decision log](../docs/DECISIONS.md)). On one BTC day it gives nearly the same R² (0.79 vs 0.80). `trades` provides the trade-imbalance baseline.
 - **Sample:** 31 days per symbol, 2023-09-01 to 2026-03-01. Days from 2026-04 onward are a held-out test set for H5/H6 and are blocked by the data loader.
 - **Third symbol:** chosen by a pre-registered rule applied only to 2023-08-01 (pre-sample). Among the top-20 USDT perps by volume, pick the one with the largest share of time at spread > 1 tick, subject to ≥ 1 update/s. The rule selected **WLDUSDT** (3.1%).
 - **Cleaning:** none removed except ±2 min around funding times (00/08/16 UTC). Quality checks per day: no missing values, no timestamps going backwards, no crossed books, median receive delay 2.6–11.7 ms. Known defects, kept: rare real orders off the tick grid (≤ 0.007% of rows, with matching trades), and transient wide spreads lasting milliseconds.
@@ -33,7 +33,7 @@ The mechanism matters for interpretation. If the spread is one tick, the mid can
 - **Baseline (H4):** trade imbalance, TI_k = Σ signed taker volume per bucket.
 - **H3:** β_w = exp(a + γ·Z_w)·D_w^(−λ), fitted by nonlinear least squares on β levels, so windows with β ≤ 0 are not dropped. Z = 4-hour UTC block and weekend dummies.
 - **Inference:** day-block bootstrap (10,000 draws, seed 20260930) for all aggregate claims, since days are the independent unit and windows within a day are correlated.
-- **Guards:** placebo with OFI shifted ±5 buckets; hypotheses and test statistics committed before the corresponding runs (HYPOTHESES.md, DECISIONS.md); every run logged in `research/trial_ledger.csv`.
+- **Guards:** placebo with OFI shifted ±5 buckets; hypotheses and test statistics committed before the corresponding runs ([pre-registration](../docs/HYPOTHESES.md), [decision log](../docs/DECISIONS.md)); every run logged in `research/trial_ledger.csv`.
 
 ## 4. Results
 
@@ -84,7 +84,7 @@ The mechanism matters for interpretation. If the spread is one tick, the mid can
 - **H5 fails everywhere.** No variant or baseline beats the zero forecast on the test days: not depth-normalised OFI, lagged returns or lagged trade imbalance. Latency barely matters (BTC break-even 0.116 → 0.093 bps from 0 → 500 ms), because there is very little to lose.
 - **The sign carries a trace of information.** The gross edge is positive on every symbol, but at 0.07–0.14 bps it sits 36–71× below the taker fee, and still 14–29× below the 2 bps maker fee (passive execution would also need a fill model, which is out of scope here). H6 fails, as its pre-registered prior expected.
 - **WLD's strongly negative R² is a units problem, not a reversal.** Between train and test, WLD's price fell from $1.92 to $0.33 and its top-of-book depth in coins rose 32×. A slope fitted in "ticks per WLD of flow" over-predicts by test time, which is exactly what β ∝ 1/depth (H3) implies. Depth-normalised OFI avoids the blow-up (R² −0.0001) but has no edge either.
-- **Disclosure:** the first final-test attempt crashed before computing anything (a missing data download). Nothing was evaluated or seen, the one-line fix and a note were committed, and the same run was repeated with unchanged frozen coefficients (DECISIONS.md).
+- **Disclosure:** the first final-test attempt crashed before computing anything (a missing data download). Nothing was evaluated or seen, the one-line fix and a note were committed, and the same run was repeated with unchanged frozen coefficients ([decision log](../docs/DECISIONS.md)).
 
 *Fee reference: Binance USDⓈ-M VIP 0, 2 bps maker / 5 bps taker, from secondary sources checked 2026-10-01 (the official page requires a login). Because H6 reports a break-even cost, readers can compare against their own fee tier.*
 

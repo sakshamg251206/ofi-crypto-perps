@@ -20,7 +20,7 @@ from ofi.regress import window_regressions
 
 SYMBOL, TICK, FREQ_S, WINDOW_S = "BTCUSDT", 0.1, 10, 1800
 RUNS = [("book_ticker", "2023-09-01"), ("book_ticker", "2024-09-01"), ("book_ticker", "2025-09-01"),
-        ("quotes", "2025-09-01")]  # quotes = robustness (DECISIONS.md)
+        ("quotes", "2025-09-01")]  # quotes = robustness (docs/DECISIONS.md)
 
 
 def process_day(dataset: str, date: str) -> pd.DataFrame:
