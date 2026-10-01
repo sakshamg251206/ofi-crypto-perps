@@ -86,12 +86,14 @@ The mechanism matters for interpretation. If the spread is one tick, the mid can
 - **WLD's strongly negative R² is a units problem, not a reversal.** Between train and test, WLD's price fell from $1.92 to $0.33 and its top-of-book depth in coins rose 32×. A slope fitted in "ticks per WLD of flow" over-predicts by test time, which is exactly what β ∝ 1/depth (H3) implies. Depth-normalised OFI avoids the blow-up (R² −0.0001) but has no edge either.
 - **Disclosure:** the first final-test attempt crashed before computing anything (a missing data download). Nothing was evaluated or seen, the one-line fix and a note were committed, and the same run was repeated with unchanged frozen coefficients (DECISIONS.md).
 
+*Fee reference: Binance USDⓈ-M VIP 0, 2 bps maker / 5 bps taker, from secondary sources checked 2026-10-01 (the official page requires a login). Because H6 reports a break-even cost, readers can compare against their own fee tier.*
+
 ## 6. Robustness and what failed
 
 - **Bucket size:** the 1 s / 30 min and 60 s / 2 h specs give the same verdicts for every symbol. R² is lower at both extremes (e.g. BTC 0.62 at 1 s, 0.64 at 60 s, vs 0.71 at 10 s).
 - **Time variation:** R² is not stable. BTC rises from 0.57 (2023-09) to ~0.80 (mid-2025), then falls to 0.47 (2026-03). ETH shows a similar late decline. The Phase 1 pilot (3 days) suggested a steady rise, which the full sample contradicts: a reminder of how misleading 3 days can be.
-- **Failures, as pre-registered:** H3 on BTC (CI width 0.71 > 0.6) and H2 on WLD (0.045 > 0.02).
-- **Multiple testing:** 4 hypotheses × 3 symbols × 3 specs. The H1/H4 conclusions sit far from their thresholds. The closest calls are H2 on BTC and ETH (upper CI ≈ 0.017–0.018 vs 0.02).
+- **Failures, as pre-registered:** H3 on BTC (CI width 0.71 > 0.6), H2 on WLD (0.045 > 0.02), and H5/H6 on all three symbols.
+- **Multiple testing:** 6 hypotheses × 3 symbols, plus robustness specs. The H1/H4 conclusions sit far from their thresholds. The closest calls are H2 on BTC and ETH (upper CI ≈ 0.017–0.018 vs 0.02).
 - **Bugs found and fixed during the work** (all with regression tests): a pre-midnight seeding bug in bucketing; a silently truncated download; tick inference fooled by very low prices (it briefly mis-measured one candidate in the third-symbol selection, and re-running with the fix gave the same pick); memory blow-up on 50M-row days (fixed with chunked processing, verified identical to single-pass).
 
 ## 7. Exploratory: why is R² so high? (not pre-registered)
