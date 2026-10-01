@@ -101,3 +101,7 @@ HYPOTHESES.md (frozen) words H5 as "OFI_k predicts ΔMid over [t_k+100ms, t_{k+1
 - All times on the local receive clock (`local_timestamp`). mid(t) = the last book state received at or before t.
 
 A property test must show the target interval never overlaps the OFI interval, for every L. HYPOTHESES.md itself is not edited.
+
+## 2026-10-01 — Final test run, attempt 1 crashed before evaluation
+
+The approved one-shot run (`final_test_run.py --final`) crashed on its first test day because `build_frame` did not download `trades`. On non-test days the files were already on disk from the Phase 2/3 builds, which hid the bug. Before the crash, BTCUSDT 2026-04-01 `book_ticker` was downloaded and bucketed in memory. No frame was saved and no prediction, R², PnL or report was computed or seen (verified: no test-day frames, no `reports/phase4_test.md`, no FINAL ledger rows). The fix adds the missing download. The frozen coefficients (`research/phase4_models.json`) and evaluation code are unchanged. The same approved run is then repeated.

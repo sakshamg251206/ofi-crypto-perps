@@ -8,7 +8,7 @@ import argparse
 import time
 
 from build_buckets import DATES, day_buckets
-from ofi.io import DATA_DIR, load_trades
+from ofi.io import DATA_DIR, download_day, load_trades
 from ofi.ofi import trade_imbalance
 from ofi.predict import predictive_frame
 
@@ -20,6 +20,7 @@ def frame_path(symbol: str, date: str):
 
 
 def build_frame(symbol: str, date: str):
+    download_day("trades", symbol, date)  # day_buckets only fetches book_ticker
     b, q, day0 = day_buckets(symbol, date, freq_s=0.1, clock="local_timestamp")
     if q["local_ts_backwards"]:
         raise ValueError(f"{symbol} {date}: receive clock goes backwards {q['local_ts_backwards']} times")
